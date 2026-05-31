@@ -204,3 +204,19 @@ def test_event_detector_currency_and_liquidity():
     liquidity = next((e for e in events if e["event"] == "liquidity_contraction"), None)
     assert liquidity is not None
     assert liquidity["severity"] == 1
+
+def test_ui_translations():
+    import streamlit as st
+    from src.translations import t
+    
+    # Mock streamlit session state language
+    if "language" not in st.session_state:
+        st.session_state.language = "jp"
+        
+    st.session_state.language = "en"
+    assert t("tickers_label", "US") == "US Tickers (comma-separated)"
+    assert t("risk_detected", count=5) == "Detected 5 holdings facing macro economic headwinds:"
+    
+    st.session_state.language = "jp"
+    assert t("tickers_label", "US") == "US 銘柄一覧（カンマ区切り）"
+    assert t("risk_detected", count=5) == "マクロ経済 of 逆風に直面している保有銘柄が 5 件検出されました："

@@ -207,9 +207,9 @@ TRANSLATIONS = {
     }
 }
 
-def t(key, **kwargs):
+def t(key, *args, **kwargs):
     lang = st.session_state.get("language", "jp")
     val = TRANSLATIONS.get(lang, {}).get(key, TRANSLATIONS.get("en", {}).get(key, key))
-    if kwargs:
-        return val.format(**kwargs)
+    if args or kwargs:
+        return val.format(*args, **kwargs)
     return val
