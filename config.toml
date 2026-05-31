@@ -1,0 +1,17 @@
+# Stock Engine Configuration
+
+[api]
+fred_api_key = ""
+
+[settings.tickers]
+US = ["AAPL", "MSFT", "NVDA", "JPM", "XOM"]
+JP = ["7203.T", "8306.T", "1605.T"]
+EZ = ["MC.PA", "ASML.AS", "SAP.DE"]
+GB = ["BP.L", "HSBA.L", "AZN.L"]
+CN = ["0700.HK", "9988.HK"]
+CA = ["RY.TO", "TD.TO"]
+AU = ["BHP.AX", "CBA.AX"]
+
+[cache]
+enable_cache = true
+cache_db_path = "data/macro_cache.db"

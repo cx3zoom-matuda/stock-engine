@@ -1,0 +1,24 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases & Cache
+data/
+*.db
+*.sqlite
+
+# Logs
+*.log
+streamlit.log
+
+# OS
+.DS_Store
+Thumbs.db
