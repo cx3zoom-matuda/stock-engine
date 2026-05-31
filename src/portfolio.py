@@ -27,10 +27,15 @@ def parse_portfolio_csv(uploaded_file) -> pd.DataFrame:
     lines = text.split('\n')
     start_idx = -1
     
-    # Supported column mappings case-insensitive
+    # Supported column mappings case-insensitive (supports Rakuten, SBI, IBKR, Schwab, Robinhood, etc.)
     ticker_synonyms = ['ticker', 'symbol', 'code', 'コード', 'ティッカー', '銘柄コード', '銘柄']
     qty_synonyms = ['qty', 'quantity', 'shares', '保有数量', '数量', '保有口数', '残高', '株数']
-    cost_synonyms = ['cost', 'cost_basis', 'price', 'average_price', 'average_cost', '取得単価', '平均取得価額', '平均取得価格', '参考単価', '単価']
+    cost_synonyms = [
+        'cost_basis', 'cost basis', 'average price', 'average_price', 
+        'average cost', 'average_cost', 'avg price', 'avg_cost', 'avg cost', 
+        '取得単価', '平均取得価額', '平均取得価格', '参考単価', '単価',
+        'cost', 'price'
+    ]
 
     # Find the header row
     for idx, line in enumerate(lines):

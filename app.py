@@ -15,7 +15,7 @@ from src.translations import t
 
 # Initialize language in session state
 if "language" not in st.session_state:
-    st.session_state.language = "jp"
+    st.session_state.language = "en"
 
 # Set page config with premium dashboard settings
 st.set_page_config(
@@ -247,10 +247,10 @@ st.sidebar.header(t("sidebar_title"))
 # Language selector
 lang_choice = st.sidebar.selectbox(
     t("language_label"),
-    ["日本語", "English"],
-    index=0 if st.session_state.language == "jp" else 1
+    ["English", "日本語"],
+    index=0 if st.session_state.language == "en" else 1
 )
-new_lang = "jp" if lang_choice == "日本語" else "en"
+new_lang = "en" if lang_choice == "English" else "jp"
 if new_lang != st.session_state.language:
     st.session_state.language = new_lang
     st.rerun()

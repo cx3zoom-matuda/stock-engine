@@ -96,9 +96,9 @@ TRANSLATIONS = {
         "tx_history": "📜 Transaction History",
         "no_tx_logs": "No transaction logs.",
         "portfolio_analyzer_title": "💼 My Portfolio Macro Analyzer",
-        "portfolio_analyzer_desc": "Upload your holdings file exported from **Rakuten Securities (楽天証券)**, **SBI Securities (SBI証券)**, or a **Universal template** to analyze how your entire portfolio aligns with the G20 macroeconomic environment.",
+        "portfolio_analyzer_desc": "Upload your holdings file exported from **Interactive Brokers (IBKR)**, **Charles Schwab**, **Fidelity**, **Rakuten/SBI**, or any standard CSV to analyze how your portfolio aligns with the G20 macroeconomic environment.",
         "privacy_notice": "🔒 **Security & Privacy Notice**: Your uploaded CSV file is processed entirely in your browser's session memory. No data is saved to our servers, and closing this browser tab instantly deletes all your information.",
-        "upload_label": "Upload Portfolio CSV (Rakuten, SBI, or Universal template)",
+        "upload_label": "Upload Portfolio CSV (IBKR, Schwab, Rakuten, SBI, or custom template)",
         "import_success": "Successfully imported portfolio data! See the analysis of your holdings below:",
         "dl_sample_btn": "📥 Download sample_portfolio.csv",
         "sample_info": "Don't have a CSV file? Download a sample template, edit it, and upload it!"
@@ -198,9 +198,9 @@ TRANSLATIONS = {
         "tx_history": "📜 取引履歴",
         "no_tx_logs": "取引ログはありません。",
         "portfolio_analyzer_title": "💼 保有ポートフォリオ・マクロ適合度分析",
-        "portfolio_analyzer_desc": "**楽天証券**、**SBI証券**、または**世界共通テンプレート**から出力した保有株式のCSVファイルをアップロードして、ポートフォリオ全体がG20マクロ環境にどのように適合しているかを分析します。",
+        "portfolio_analyzer_desc": "**楽天証券**や**SBI証券**、または **Interactive Brokers (IBKR)**、**Charles Schwab** 等から出力した保有株式のCSVファイルをアップロードして、ポートフォリオ全体がG20マクロ環境にどのように適合しているかを分析します。",
         "privacy_notice": "🔒 **セキュリティとプライバシーについて**: アップロードされたCSVファイルは、一時的にお使いのブラウザセッションメモリ上でのみ処理され、サーバーに保存されることはありません。タブを閉じるとデータはサーバーのメモリから完全に消去されますので、安心してお試しください。",
-        "upload_label": "ポートフォリオCSVファイルをアップロード (Rakuten, SBI, または Universal テンプレート)",
+        "upload_label": "ポートフォリオCSVファイルをアップロード (IBKR, Schwab, 楽天, SBI 等)",
         "import_success": "ポートフォリオデータの取り込みに成功しました！以下の分析レポートを確認してください：",
         "dl_sample_btn": "📥 sample_portfolio.csv をダウンロード",
         "sample_info": "ポートフォリオをお持ちでないですか？ テンプレートファイルをダウンロード・編集してアップロードしてお試しください！"

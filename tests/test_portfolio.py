@@ -34,6 +34,18 @@ AAPL,15,145.5
 NVDA,10,750
 """
 
+# Mock CSV for IBKR (Interactive Brokers)
+MOCK_IBKR_CSV = """Account Information,Symbol,Quantity,Average Price,Price,Value
+U1234567,AAPL,25,175.20,180.00,4500.00
+U1234567,MSFT,10,320.50,330.00,3300.00
+"""
+
+# Mock CSV for Schwab
+MOCK_SCHWAB_CSV = """Symbol,Description,Quantity,Cost Basis,Price,Market Value
+AAPL,Apple Inc.,30,165.40,180.00,5400.00
+MSFT,Microsoft Corp,15,310.20,330.00,4950.00
+"""
+
 def test_parse_portfolio_csv_rakuten_jp():
     file_mock = io.BytesIO(MOCK_RAKUTEN_JP_CSV.encode('shift_jis'))
     df = parse_portfolio_csv(file_mock)
@@ -86,6 +98,32 @@ def test_parse_portfolio_csv_universal():
     nvda = df[df["ticker"] == "NVDA"].iloc[0]
     assert nvda["qty"] == 10.0
     assert nvda["cost"] == 750.0
+
+def test_parse_portfolio_csv_ibkr():
+    file_mock = io.BytesIO(MOCK_IBKR_CSV.encode('utf-8'))
+    df = parse_portfolio_csv(file_mock)
+    assert len(df) == 2
+    
+    aapl = df[df["ticker"] == "AAPL"].iloc[0]
+    assert aapl["qty"] == 25.0
+    assert aapl["cost"] == 175.20
+
+    msft = df[df["ticker"] == "MSFT"].iloc[0]
+    assert msft["qty"] == 10.0
+    assert msft["cost"] == 320.50
+
+def test_parse_portfolio_csv_schwab():
+    file_mock = io.BytesIO(MOCK_SCHWAB_CSV.encode('utf-8'))
+    df = parse_portfolio_csv(file_mock)
+    assert len(df) == 2
+    
+    aapl = df[df["ticker"] == "AAPL"].iloc[0]
+    assert aapl["qty"] == 30.0
+    assert aapl["cost"] == 165.40
+
+    msft = df[df["ticker"] == "MSFT"].iloc[0]
+    assert msft["qty"] == 15.0
+    assert msft["cost"] == 310.20
 
 @pytest.mark.asyncio
 async def test_evaluate_portfolio_macro():
