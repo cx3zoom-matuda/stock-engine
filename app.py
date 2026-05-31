@@ -314,10 +314,10 @@ except Exception as e:
     stock_metrics_map = {}
     futures_history = {}
     for country, t_list in active_tickers_dict.items():
-        for t in t_list:
-            stock_metrics_map[t] = {
-                "ticker": t,
-                "name": t.split(".")[0],
+        for ticker in t_list:
+            stock_metrics_map[ticker] = {
+                "ticker": ticker,
+                "name": ticker.split(".")[0],
                 "sector": "electronics",
                 "per": 15.0,
                 "pbr": 1.0,
@@ -811,8 +811,8 @@ for item in results["rankings"]:
 # Filter stock metrics for this specific country
 country_tickers = active_tickers_dict.get(current_country, [])
 country_stock_metrics = []
-for t in country_tickers:
-    m = stock_metrics_map.get(t)
+for ticker in country_tickers:
+    m = stock_metrics_map.get(ticker)
     if m:
         country_stock_metrics.append(m)
 
