@@ -1,0 +1,26 @@
+# Macro Engine Configuration Template
+
+[api]
+# Obtain a free FRED API key from https://fred.stlouisfed.org/api_key.html
+# If left empty, the application will automatically run in synthetic mock data mode.
+fred_api_key = ""
+
+[settings]
+# Initial set of stock tickers to screen (Japanese stocks can be formatted as 'XXXX.T')
+tickers = [
+    "7203.T",  # Toyota Motor Corp (Automotive)
+    "9984.T",  # SoftBank Group (Investment/Tech)
+    "6758.T",  # Sony Group (Electronics)
+    "8306.T",  # Mitsubishi UFJ Financial (Banking)
+    "9101.T",  # NYK Line (Shipping)
+    "1605.T",  # INPEX (Energy/Oil)
+    "1925.T",  # Daiwa House (Construction)
+    "2914.T",  # Japan Tobacco (Defensive/Tobacco)
+    "7974.T",  # Nintendo (Gaming)
+    "9613.T",  # NTT Data (IT Services)
+]
+
+[cache]
+# Enable caching to local file to avoid hitting API rate limits
+enable_cache = true
+cache_db_path = "data/macro_cache.db"

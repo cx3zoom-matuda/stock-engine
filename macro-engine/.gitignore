@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases & Cache
+data/
+*.db
+*.sqlite
+
+# Local configurations
+config.toml
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
