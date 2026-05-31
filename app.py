@@ -1141,6 +1141,10 @@ st.subheader("💼 My Portfolio Macro Analyzer")
 st.markdown("""
 Upload your holdings file exported from **Rakuten Securities (楽天証券)** to analyze how your 
 entire portfolio aligns with the G20 macroeconomic environment.
+
+🔒 **Security & Privacy Notice (セキュリティとプライバシーについて)**:
+Your uploaded CSV file is processed entirely in your browser's session memory. No data is saved to our servers, and closing this browser tab instantly deletes all your information.
+*(アップロードされたCSVファイルは、一時的にお使いのブラウザセッションメモリ上でのみ処理され、サーバーに保存されることはありません。タブを閉じるとデータはサーバーのメモリから完全に消去されますので、安心してお試しください。)*
 """)
 
 uploaded_file = st.file_uploader(
