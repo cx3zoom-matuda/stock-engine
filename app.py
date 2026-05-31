@@ -11,10 +11,15 @@ from src.engine import RuleEngine
 from src.evaluator import StockEvaluator
 from src.config import load_config, COUNTRY_SERIES_MAP
 from src.providers.factory import ProviderFactory
+from src.translations import t
+
+# Initialize language in session state
+if "language" not in st.session_state:
+    st.session_state.language = "jp"
 
 # Set page config with premium dashboard settings
 st.set_page_config(
-    page_title="G20 Macro & Stock Evaluation Hub",
+    page_title=t("page_title"),
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -54,12 +59,8 @@ if not default_api_key:
         pass
 
 # Application Header
-st.title("📊 G20 Macro-Industry Translation & Stock Screening Hub")
-st.markdown("""
-This web dashboard translates macroeconomic indicators and qualitative cycles into investment 
-impact scores across **17 core industry sectors**, and evaluates individual G20 stocks by combining 
-industry-level macro alignment with country-specific valuation metrics (PER, PBR).
-""")
+st.title(t("app_title"))
+st.markdown(t("app_desc"))
 
 # Initialize component engines
 detector = EventDetector()
@@ -241,47 +242,62 @@ def run_screening_pipeline(tickers_by_country, fred_api_key):
     return raw_macro, stock_metrics_map, futures_history
 
 # Sidebar configuration
-st.sidebar.header("🕹️ Controls & Configuration")
+st.sidebar.header(t("sidebar_title"))
+
+# Language selector
+lang_choice = st.sidebar.selectbox(
+    t("language_label"),
+    ["日本語", "English"],
+    index=0 if st.session_state.language == "jp" else 1
+)
+new_lang = "jp" if lang_choice == "日本語" else "en"
+if new_lang != st.session_state.language:
+    st.session_state.language = new_lang
+    st.rerun()
 
 # API Keys
-fred_api_key_input = st.sidebar.text_input("FRED API Key", value=default_api_key, type="password", 
-                                          help="Leave blank to use mock fallback data or environment variables")
+fred_api_key_input = st.sidebar.text_input(
+    t("fred_key_label"),
+    value=default_api_key,
+    type="password", 
+    help=t("fred_key_help")
+)
 
 # Target Stock Tickers Input (Split by Region dynamically)
-st.sidebar.subheader("📋 Stock Screening List")
+st.sidebar.subheader(t("screening_list"))
 active_tickers_dict = {}
 for country_code in COUNTRY_SERIES_MAP.keys():
     defaults = default_tickers_dict.get(country_code, [])
     val_str = st.sidebar.text_input(
-        f"{country_code} Tickers (comma-separated)",
+        t("tickers_label", country_code),
         value=", ".join(defaults)
     )
     active_tickers_dict[country_code] = [t.strip() for t in val_str.split(",") if t.strip()]
 
 # Refresh button
-if st.sidebar.button("🔄 Reload Data & Re-Screen", use_container_width=True):
+if st.sidebar.button(t("reload_btn"), use_container_width=True):
     st.cache_data.clear()
     st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.subheader("Qualitative & Regional Triggers")
+st.sidebar.subheader(t("qualitative_title"))
 
 # Manual switches/sliders for event cycles
-ai_investment_boom = st.sidebar.slider("AI Investment Boom Severity", min_value=0, max_value=3, value=1, step=1)
-semiconductor_capex_cycle = st.sidebar.slider("Semiconductor Capex Cycle", min_value=0, max_value=3, value=1, step=1)
-defense_spending_increase = st.sidebar.slider("Defense Spending Increase", min_value=0, max_value=3, value=0, step=1)
-china_recovery = st.sidebar.checkbox("China Recovery Active", value=False)
-china_slowing = st.sidebar.checkbox("China Slowing Active", value=False)
+ai_investment_boom = st.sidebar.slider(t("ai_boom_label"), min_value=0, max_value=3, value=1, step=1)
+semiconductor_capex_cycle = st.sidebar.slider(t("semi_cycle_label"), min_value=0, max_value=3, value=1, step=1)
+defense_spending_increase = st.sidebar.slider(t("defense_label"), min_value=0, max_value=3, value=0, step=1)
+china_recovery = st.sidebar.checkbox(t("china_rec_label"), value=False)
+china_slowing = st.sidebar.checkbox(t("china_slow_label"), value=False)
 
 # Added overrides for G20 countries
-st.sidebar.markdown("**🇯🇵/🇺🇸/🇪🇺 Macro Overrides**")
-rate_hike_override = st.sidebar.checkbox("Central Bank Rate Hike Active")
-rate_cut_override = st.sidebar.checkbox("Central Bank Rate Cut Active")
-business_expansion_override = st.sidebar.checkbox("Business Expansion Active")
-business_contraction_override = st.sidebar.checkbox("Business Contraction Active")
-labor_tightening_override = st.sidebar.checkbox("Labor Tightening Active")
-china_mfg_slowdown_override = st.sidebar.checkbox("China Mfg Slowdown Active")
-yield_curve_inversion_override = st.sidebar.checkbox("Yield Curve Inverted Active")
+st.sidebar.markdown(t("macro_overrides"))
+rate_hike_override = st.sidebar.checkbox(t("cb_hike_label"))
+rate_cut_override = st.sidebar.checkbox(t("cb_cut_label"))
+business_expansion_override = st.sidebar.checkbox(t("expansion_label"))
+business_contraction_override = st.sidebar.checkbox(t("contraction_label"))
+labor_tightening_override = st.sidebar.checkbox(t("labor_label"))
+china_mfg_slowdown_override = st.sidebar.checkbox(t("china_mfg_label"))
+yield_curve_inversion_override = st.sidebar.checkbox(t("yield_inv_label"))
 
 # Fetch API and stock metrics data
 try:
@@ -344,13 +360,13 @@ def apply_manual_overrides(inputs_dict: Dict[str, Any]):
 
 # Country names & maps
 COUNTRY_NAMES = {
-    "US": "United States",
-    "JP": "Japan",
-    "EZ": "Euro Area",
-    "GB": "United Kingdom",
-    "CN": "China",
-    "CA": "Canada",
-    "AU": "Australia"
+    "US": "United States" if st.session_state.language == "en" else "米国",
+    "JP": "Japan" if st.session_state.language == "en" else "日本",
+    "EZ": "Euro Area" if st.session_state.language == "en" else "ユーロ圏",
+    "GB": "United Kingdom" if st.session_state.language == "en" else "英国",
+    "CN": "China" if st.session_state.language == "en" else "中国",
+    "CA": "Canada" if st.session_state.language == "en" else "カナダ",
+    "AU": "Australia" if st.session_state.language == "en" else "オーストラリア"
 }
 
 COUNTRY_FLAGS = {
@@ -411,12 +427,8 @@ if not available_countries:
 if "selected_country" not in st.session_state:
     st.session_state.selected_country = available_countries[0]
 
-# Fallback check if list changes
-if st.session_state.selected_country not in available_countries:
-    st.session_state.selected_country = available_countries[0]
-
-# Render big flag buttons side by side
-st.markdown("### 🌐 Select G20 Market Target")
+# Fallback check if # Render big flag buttons side by side
+st.markdown(f"### {t('select_market')}")
 cols_flags = st.columns(len(available_countries))
 
 for idx, country_code in enumerate(available_countries):
@@ -445,7 +457,7 @@ country_inputs = prepare_country_detector_inputs(raw_macro_data, current_country
 apply_manual_overrides(country_inputs)
 
 # 2. RENDER KPI CARDS
-st.subheader(f"📈 {COUNTRY_FLAGS.get(current_country)} {COUNTRY_NAMES.get(current_country)} Macroeconomic Indicators")
+st.subheader(t("macro_indicators", COUNTRY_FLAGS.get(current_country), COUNTRY_NAMES.get(current_country)))
 cols = st.columns(6)
 
 try:
@@ -456,12 +468,12 @@ try:
         prev_pol = policy_rate.iloc[-2]
         diff_pol = latest_pol - prev_pol
         cols[0].metric(
-            label="Policy Interest Rate",
+            label=t("policy_rate"),
             value=f"{latest_pol:.2f}%",
             delta=f"{diff_pol:+.2f}% pts (30d)"
         )
     else:
-        cols[0].metric(label="Policy Interest Rate", value="N/A")
+        cols[0].metric(label=t("policy_rate"), value="N/A")
 
     # 10Y Yield Card
     yield_10y = country_inputs["YIELD_10Y"]
@@ -470,25 +482,25 @@ try:
         prev_10y = yield_10y.iloc[-2]
         diff_10y = latest_10y - prev_10y
         cols[1].metric(
-            label="10-Year Bond Yield",
+            label=t("ten_year_yield"),
             value=f"{latest_10y:.2f}%",
             delta=f"{diff_10y:+.2f}% pts (30d)"
         )
     else:
-        cols[1].metric(label="10-Year Bond Yield", value="N/A")
+        cols[1].metric(label=t("ten_year_yield"), value="N/A")
 
     # CPI Card
     cpi = country_inputs["CPI"]
     if not cpi.empty:
         latest_cpi = cpi.iloc[-1]
         cols[2].metric(
-            label="YoY Inflation Rate (CPI)",
+            label=t("cpi"),
             value=f"{latest_cpi:.2f}%",
-            delta="Target: ~2.0%",
+            delta=t("cpi_target"),
             delta_color="inverse" if latest_cpi > 2.0 else "normal"
         )
     else:
-        cols[2].metric(label="YoY Inflation Rate (CPI)", value="N/A")
+        cols[2].metric(label=t("cpi"), value="N/A")
 
     # Business Confidence Card
     conf = country_inputs["CONFIDENCE"]
@@ -496,25 +508,25 @@ try:
         latest_conf = conf.iloc[-1]
         threshold = 50.0 if latest_conf < 75.0 else 100.0
         cols[3].metric(
-            label="Business Confidence (PMI/Tankan)",
+            label=t("business_confidence"),
             value=f"{latest_conf:.1f}",
             delta=f"Threshold: {threshold}",
             delta_color="normal" if latest_conf >= threshold else "inverse"
         )
     else:
-        cols[3].metric(label="Business Confidence", value="N/A")
+        cols[3].metric(label=t("business_confidence"), value="N/A")
 
     # GDP YoY Card
     gdp = country_inputs["GDP"]
     if not gdp.empty:
         latest_gdp = gdp.iloc[-1]
         cols[4].metric(
-            label="GDP YoY Growth",
+            label=t("gdp_growth"),
             value=f"{latest_gdp:.2f}%",
-            delta="Exp: >2.0%"
+            delta=t("gdp_exp")
         )
     else:
-        cols[4].metric(label="GDP YoY Growth", value="N/A")
+        cols[4].metric(label=t("gdp_growth"), value="N/A")
 
     # Money Supply (M2/M3) Card
     m2 = country_inputs["MONEY_SUPPLY"]
@@ -523,13 +535,13 @@ try:
         prev_m2 = m2.iloc[-2] if len(m2) >= 2 else latest_m2
         diff_m2 = latest_m2 - prev_m2
         cols[5].metric(
-            label="Money Supply (M2/M3) YoY",
+            label=t("money_supply"),
             value=f"{latest_m2:.2f}%",
             delta=f"{diff_m2:+.2f}% pts (30d)",
-            help="Year-over-Year growth of M2/M3 money supply. High growth represents monetary expansion, while negative/low growth represents tightening."
+            help=t("money_supply_help")
         )
     else:
-        cols[5].metric(label="Money Supply (M2/M3) YoY", value="N/A")
+        cols[5].metric(label=t("money_supply"), value="N/A")
 except Exception as kpi_err:
     st.error(f"Error rendering KPI indicators: {kpi_err}")
     
@@ -551,18 +563,23 @@ def get_futures_change(ticker: str) -> Tuple[float, float]:
     latest_val = stock_metrics_map.get(ticker, {}).get("price", 0.0)
     return latest_val, 0.0
 
-st.subheader("📊 Global Market Sentiment & Yield Curve")
+st.subheader(t("global_sentiment"))
 m_col1, m_col2 = st.columns([2, 3])
 
 with m_col1:
-    st.write("**🎭 Volatility & Commodities (Futures 30d Chg)**")
+    st.write(f"**{t('volatility_commodities')}**")
     
     sub_col1, sub_col2, sub_col3 = st.columns(3)
     
     vix_val, vix_chg = get_futures_change("^VIX")
-    vix_status = "Fear (恐怖) 🔴" if vix_val > 22.0 else "Stable (安定) 🟢"
+    vix_status = ""
+    if st.session_state.language == "en":
+        vix_status = "Fear 🔴" if vix_val > 22.0 else "Stable 🟢"
+    else:
+        vix_status = "恐怖 🔴" if vix_val > 22.0 else "安定 🟢"
+        
     sub_col1.metric(
-        label="VIX Volatility",
+        label=t("vix_label"),
         value=f"{vix_val:.2f}",
         delta=vix_status,
         delta_color="normal" if vix_val <= 22.0 else "inverse"
@@ -570,14 +587,14 @@ with m_col1:
     
     gold_val, gold_chg = get_futures_change("GC=F")
     sub_col2.metric(
-        label="Gold (GC=F)",
+        label=t("gold_label"),
         value=f"${gold_val:,.1f}",
         delta=f"{gold_chg:+.1f}%"
     )
     
     oil_val, oil_chg = get_futures_change("CL=F")
     sub_col3.metric(
-        label="WTI Crude (CL=F)",
+        label=t("oil_label"),
         value=f"${oil_val:,.2f}",
         delta=f"{oil_chg:+.1f}%"
     )
@@ -587,28 +604,29 @@ with m_col1:
     
     copper_val, copper_chg = get_futures_change("HG=F")
     sub_col4.metric(
-        label="Copper (HG=F)",
+        label=t("copper_label"),
         value=f"${copper_val:,.4f}",
         delta=f"{copper_chg:+.1f}%"
     )
     
     gas_val, gas_chg = get_futures_change("NG=F")
     sub_col5.metric(
-        label="Natural Gas (NG=F)",
+        label=t("gas_label"),
         value=f"${gas_val:,.3f}",
         delta=f"{gas_chg:+.1f}%"
     )
 
     # Local Currency Exchange Rate Metric Card
+    is_en = (st.session_state.language == "en")
     c_info = {
-        "US": {"ticker": "DX-Y.NYB", "label": "US Dollar Index (DXY)"},
-        "JP": {"ticker": "USDJPY=X", "label": "USD/JPY (円安/円高)"},
-        "EZ": {"ticker": "EURUSD=X", "label": "EUR/USD (ユーロドル)"},
-        "GB": {"ticker": "GBPUSD=X", "label": "GBP/USD (ポンドドル)"},
-        "CN": {"ticker": "USDCNY=X", "label": "USD/CNY (人民元)"},
-        "CA": {"ticker": "USDCAD=X", "label": "USD/CAD (加ドル)"},
-        "AU": {"ticker": "AUDUSD=X", "label": "AUD/USD (豪ドル)"},
-    }.get(current_country, {"ticker": "DX-Y.NYB", "label": "US Dollar Index (DXY)"})
+        "US": {"ticker": "DX-Y.NYB", "label": "US Dollar Index (DXY)" if is_en else "米ドル指数 (DXY)"},
+        "JP": {"ticker": "USDJPY=X", "label": "USD/JPY (Weak/Strong Yen)" if is_en else "USD/JPY (円安/円高)"},
+        "EZ": {"ticker": "EURUSD=X", "label": "EUR/USD (Euro/Dollar)" if is_en else "EUR/USD (ユーロドル)"},
+        "GB": {"ticker": "GBPUSD=X", "label": "GBP/USD (Pound/Dollar)" if is_en else "GBP/USD (ポンドドル)"},
+        "CN": {"ticker": "USDCNY=X", "label": "USD/CNY (Yuan)" if is_en else "USD/CNY (人民元)"},
+        "CA": {"ticker": "USDCAD=X", "label": "USD/CAD (Loonie)" if is_en else "USD/CAD (加ドル)"},
+        "AU": {"ticker": "AUDUSD=X", "label": "AUD/USD (Aussie)" if is_en else "AUD/USD (豪ドル)"},
+    }.get(current_country, {"ticker": "DX-Y.NYB", "label": "US Dollar Index (DXY)" if is_en else "米ドル指数 (DXY)"})
     
     curr_val, curr_chg = get_futures_change(c_info["ticker"])
     curr_format = f"{curr_val:.4f}" if curr_val < 5.0 else f"{curr_val:.2f}"
@@ -619,12 +637,12 @@ with m_col1:
     )
     
     if vix_val > 22.0:
-        st.info("⚠️ VIX is elevated. Contraction override active. Staples, pharma, and utilities are prioritized.")
+        st.info(t("vix_elevated"))
     else:
-        st.success("✅ VIX is stable. Market sentiment is risk-on. Normal screening values apply.")
+        st.success(t("vix_stable"))
 
 with m_col2:
-    st.write("**📈 US Treasury Yield Curve (3M / 2Y / 5Y / 10Y)**")
+    st.write(f"**{t('yield_curve_label')}**")
     try:
         y_3m = raw_macro_data.get("DTB3", pd.DataFrame())
         y_2y = raw_macro_data.get("DGS2", pd.DataFrame())
@@ -658,9 +676,9 @@ with m_col2:
         st.plotly_chart(fig_curve, use_container_width=True, key="yield_curve_chart")
         
         if val_2y > val_10y or val_3m > val_10y:
-            st.error(f"🚨 **Yield Curve Inverted (逆イールド発生中)**: 3M={val_3m:.2f}%, 2Y={val_2y:.2f}%, 10Y={val_10y:.2f}% (景気後退の兆候)")
+            st.error(t("yield_inverted", val_3m=val_3m, val_2y=val_2y, val_10y=val_10y))
         else:
-            st.success("✅ **Yield Curve Normal (正常)**: 利回り曲線は順イールドを保っています。")
+            st.success(t("yield_normal"))
     except Exception as curve_err:
         st.warning(f"Unable to render yield curve: {curve_err}")
 
@@ -674,7 +692,7 @@ results = engine.calculate_industry_scores(active_events)
 col_left, col_right = st.columns([1, 2])
 
 with col_left:
-    st.subheader("🔔 Active Macro Events")
+    st.subheader(t("active_events"))
     if active_events:
         for event in active_events:
             severity = event["severity"]
@@ -684,10 +702,10 @@ with col_left:
                 f"*{event['description']}*"
             )
     else:
-        st.info("No active events triggered based on current values.")
+        st.info(t("no_active_events"))
 
 with col_right:
-    st.subheader("🏆 Core Industry Rankings")
+    st.subheader(t("core_rankings"))
     rankings = results["rankings"]
     sectors = [r["sector"] for r in rankings]
     scores = [r["score"] for r in rankings]
@@ -727,7 +745,7 @@ with col_right:
     st.plotly_chart(fig, use_container_width=True, key=f"plot_{current_country}")
 
 # 5. DETAILED FACTOR BREAKDOWN
-with st.expander("📋 Sector Breakdown & Contributing Factors Dataframe"):
+with st.expander(t("breakdown_title")):
     breakdown_rows = []
     for item in rankings:
         sector = item["sector"]
@@ -773,7 +791,7 @@ with st.expander("📋 Sector Breakdown & Contributing Factors Dataframe"):
 st.markdown("---")
 
 # 6. STOCK RANKING & DETAILS PANEL
-st.subheader("🔍 Individual Stock Screening & Evaluation")
+st.subheader(t("stock_screening"))
 
 # Transform RuleEngine rankings into StockEvaluator expected format
 sector_scores = {}
@@ -806,7 +824,7 @@ if evaluated_stocks:
     col_tbl, col_pnl = st.columns([5, 4])
     
     with col_tbl:
-        st.write("**🎯 Screened Stock Rankings**")
+        st.write(f"**{t('screened_rankings')}**")
         
         df_stocks_ui = []
         symbol = CURRENCY_MAP.get(current_country, "$")
@@ -834,10 +852,10 @@ if evaluated_stocks:
         )
 
     with col_pnl:
-        st.write("**🕵️ Analysis Detail Panel**")
+        st.write(f"**{t('analysis_panel')}**")
         
         selected_ticker = st.selectbox(
-            "Select Ticker to inspect detailed breakdown:",
+            t("select_ticker"),
             options=[s["ticker"] for s in evaluated_stocks],
             format_func=lambda t: f"{t} - {next(s['name'] for s in evaluated_stocks if s['ticker'] == t)}",
             key=f"sel_ticker_{current_country}"
@@ -847,6 +865,8 @@ if evaluated_stocks:
         symbol = CURRENCY_MAP.get(current_country, "$")
         price_str = f"{symbol}{selected_stock['price']:,.2f}" if symbol != "¥" else f"¥{selected_stock['price']:,.1f}"
         
+        drivers_title = t("macro_drivers", selected_stock['sector'].replace('_', ' ').title(), selected_stock['macro_score'])
+        
         # Render details panel HTML card
         st.markdown(f"""
         <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 20px; color: #e2e8f0;">
@@ -854,11 +874,11 @@ if evaluated_stocks:
             <p style="margin-top:0; color: #94a3b8; font-size: 14px;"><b>Sector:</b> {selected_stock['sector'].replace('_', ' ').title()} | <b>Price:</b> {price_str}</p>
             <p style="font-size: 14px;"><b>Valuation Metrics:</b> PER: {selected_stock['per']:.1f} ({selected_stock['valuation_notes']}) | PBR: {selected_stock['pbr']:.2f}</p>
             <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;" />
-            <h4 style="color: #38bdf8; margin-top:0;">Investment Summary</h4>
+            <h4 style="color: #38bdf8; margin-top:0;">{t("investment_summary")}</h4>
             <p style="font-size: 14px;"><b>Decision:</b> <span style="color: {'#2ecc71' if selected_stock['decision'] == 'BUY' else '#f1c40f' if selected_stock['decision'] == 'WATCH' else '#e74c3c'}; font-weight: bold;">{selected_stock['decision']}</span> (Combined Score: {selected_stock['combined_score']:+.1f})</p>
             <p style="font-size: 14px; font-style: italic; line-height: 1.4;">"{selected_stock['rationale']}"</p>
             <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;" />
-            <h4 style="color: #38bdf8; margin-top:0; margin-bottom: 10px;">Industry Macroeconomic Drivers ({selected_stock['sector'].replace('_', ' ').title()} Score: {selected_stock['macro_score']:+.1f})</h4>
+            <h4 style="color: #38bdf8; margin-top:0; margin-bottom: 10px;">{drivers_title}</h4>
         </div>
         """, unsafe_allow_html=True)
         
@@ -875,18 +895,18 @@ if evaluated_stocks:
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("No active macroeconomic triggers directly impacting this sector.")
+            st.info(t("no_macro_triggers"))
 else:
-    st.info("No stocks loaded in the screening list for this country.")
+    st.info(t("no_stocks_loaded"))
 
 # --- INVISIBLE LOGIC: Sync uploaded CSV to Real Portfolio ---
-from src.portfolio import parse_rakuten_csv, evaluate_portfolio_macro, recommend_rebalancing
+from src.portfolio import parse_portfolio_csv, evaluate_portfolio_macro, recommend_rebalancing
 
 # Process file upload BEFORE rendering so that positions are updated instantly
 if "portfolio_uploader" in st.session_state and st.session_state.portfolio_uploader is not None:
     try:
         st.session_state.portfolio_uploader.seek(0)
-        portfolio_df = parse_rakuten_csv(st.session_state.portfolio_uploader)
+        portfolio_df = parse_portfolio_csv(st.session_state.portfolio_uploader)
         
         if not portfolio_df.empty:
             real_acc = st.session_state.real_portfolio
@@ -898,11 +918,8 @@ if "portfolio_uploader" in st.session_state and st.session_state.portfolio_uploa
 
 # --- 8. PAPER TRADING SECTION (5 SECTIONS) ---
 st.markdown("---")
-st.subheader("🎮 Paper Trading Hub (5 Accounts)")
-st.markdown("""
-Run demographic virtual trades here. You can manually buy/sell equities, analyze each account's 
-macro alignment, and **Save/Load your data locally via JSON files**.
-""")
+st.subheader(t("paper_trading_title"))
+st.markdown(t("paper_trading_desc"))
 
 from src.market_data import MarketDataClient
 market_client = MarketDataClient()
@@ -913,7 +930,7 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
     with s_col1:
         json_str = acc.to_json()
         st.download_button(
-            label="📥 Save Account (JSON)",
+            label=t("save_json"),
             data=json_str,
             file_name=f"trance_engine_portfolio_{key_suffix.lower().replace(' ', '_')}.json",
             mime="application/json",
@@ -921,7 +938,7 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
         )
     with s_col2:
         load_file = st.file_uploader(
-            "Load Saved Account (JSON)", 
+            t("load_json"), 
             type=["json"], 
             key=f"ul_file_{key_suffix}",
             label_visibility="collapsed"
@@ -933,14 +950,14 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
                     st.session_state.real_portfolio = loaded_acc
                 else:
                     st.session_state.paper_accounts[key_suffix] = loaded_acc
-                st.success("Account state loaded successfully!")
+                st.success(t("load_success"))
                 st.rerun()
             except Exception as load_err:
-                st.error(f"Failed to load: {load_err}")
+                st.error(t("load_failed", load_err))
     with s_col3:
-        if st.button("🚨 Reset Account", key=f"reset_btn_{key_suffix}", use_container_width=True):
+        if st.button(t("reset_acc"), key=f"reset_btn_{key_suffix}", use_container_width=True):
             acc.reset()
-            st.success("Account reset to initial balance.")
+            st.success(t("reset_success"))
             st.rerun()
 
     # 2. Construct portfolio_df from virtual positions
@@ -987,33 +1004,34 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
     gain_pct = (gain / acc.initial_balance * 100.0) if acc.initial_balance > 0 else 0.0
     
     m_cols = st.columns(5)
-    m_cols[0].metric("Cash Balance (現金)", f"{acc.currency}{acc.cash:,.2f}" if acc.currency != "¥" else f"¥{acc.cash:,.0f}")
-    m_cols[1].metric("Stock Value (時価評価額)", f"{acc.currency}{v_results['total_value']:,.2f}" if acc.currency != "¥" else f"¥{v_results['total_value']:,.0f}")
-    m_cols[2].metric("Total Asset Value (総資産)", f"{acc.currency}{c_val:,.2f}" if acc.currency != "¥" else f"¥{c_val:,.0f}")
+    m_cols[0].metric(t("cash_balance"), f"{acc.currency}{acc.cash:,.2f}" if acc.currency != "¥" else f"¥{acc.cash:,.0f}")
+    m_cols[1].metric(t("stock_value"), f"{acc.currency}{v_results['total_value']:,.2f}" if acc.currency != "¥" else f"¥{v_results['total_value']:,.0f}")
+    m_cols[2].metric(t("total_assets"), f"{acc.currency}{c_val:,.2f}" if acc.currency != "¥" else f"¥{c_val:,.0f}")
     gain_c = "normal" if gain >= 0 else "inverse"
-    m_cols[3].metric("Total Profit/Loss (純損益)", f"{acc.currency}{gain:+,.2f}" if acc.currency != "¥" else f"¥{gain:+,.0f}", f"{gain_pct:+.2f}%", delta_color=gain_c)
+    m_cols[3].metric(t("profit_loss"), f"{acc.currency}{gain:+,.2f}" if acc.currency != "¥" else f"¥{gain:+,.0f}", f"{gain_pct:+.2f}%", delta_color=gain_c)
     
     p_score = v_results["portfolio_macro_score"]
-    p_status = "Tailwind 🟢" if p_score >= 10.0 else "Headwind 🔴" if p_score <= -10.0 else "Neutral 🟡"
-    m_cols[4].metric("Macro Score", f"{p_score:+.2f}", p_status)
+    is_en = (st.session_state.language == "en")
+    p_status = ("Tailwind 🟢" if is_en else "追い風 🟢") if p_score >= 10.0 else ("Headwind 🔴" if is_en else "逆風 🔴") if p_score <= -10.0 else ("Neutral 🟡" if is_en else "中立 🟡")
+    m_cols[4].metric(t("macro_score"), f"{p_score:+.2f}", p_status)
 
     # 4. Form for executing virtual BUY/SELL
     if show_transaction_form:
-        with st.expander("🔨 Execute Transaction (売買の実行)"):
+        with st.expander(t("execute_transaction")):
             t_col1, t_col2, t_col3, t_col4 = st.columns(4)
             with t_col1:
-                trade_ticker = st.text_input("Ticker Symbol (e.g. AAPL, 7203.T)", key=f"t_ticker_{key_suffix}").strip()
+                trade_ticker = st.text_input(t("ticker_symbol"), key=f"t_ticker_{key_suffix}").strip()
             with t_col2:
-                trade_side = st.selectbox("Action (取引)", ["BUY", "SELL"], key=f"t_side_{key_suffix}")
+                trade_side = st.selectbox(t("action"), ["BUY", "SELL"], key=f"t_side_{key_suffix}")
             with t_col3:
-                trade_qty = st.number_input("Quantity (数量)", min_value=0.01, step=1.0, key=f"t_qty_{key_suffix}")
+                trade_qty = st.number_input(t("quantity"), min_value=0.01, step=1.0, key=f"t_qty_{key_suffix}")
             with t_col4:
-                manual_p = st.number_input("Price (単価)", min_value=0.0, step=1.0, key=f"t_price_{key_suffix}", 
-                                           help="Leave as 0 to auto-fetch current market price")
+                manual_p = st.number_input(t("price"), min_value=0.0, step=1.0, key=f"t_price_{key_suffix}", 
+                                           help=t("price_help"))
 
-            if st.button("Submit Trade", key=f"t_submit_{key_suffix}", use_container_width=True):
+            if st.button(t("submit_trade"), key=f"t_submit_{key_suffix}", use_container_width=True):
                 if not trade_ticker:
-                    st.error("Please enter a valid ticker.")
+                    st.error(t("valid_ticker_error"))
                 else:
                     try:
                         trade_price = manual_p
@@ -1028,15 +1046,15 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
                             finally:
                                 loop.close()
                             if trade_price == 0.0:
-                                st.error("Could not retrieve current market price. Please enter the price manually.")
+                                st.error(t("fetch_price_error"))
                                 st.stop()
                         
                         if trade_side == "BUY":
                             acc.buy(trade_ticker, trade_qty, trade_price)
-                            st.success(f"Bought {trade_qty} shares of {trade_ticker} at {acc.currency}{trade_price:,.2f}")
+                            st.success(t("bought_success", qty=trade_qty, ticker=trade_ticker, price=trade_price, symbol=acc.currency))
                         else:
                             acc.sell(trade_ticker, trade_qty, trade_price)
-                            st.success(f"Sold {trade_qty} shares of {trade_ticker} at {acc.currency}{trade_price:,.2f}")
+                            st.success(t("sold_success", qty=trade_qty, ticker=trade_ticker, price=trade_price, symbol=acc.currency))
                         st.rerun()
                     except Exception as t_err:
                         st.error(f"Transaction failed: {t_err}")
@@ -1044,7 +1062,7 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
     # 5. Position table and charts
     v_col_left, v_col_right = st.columns([3, 2])
     with v_col_left:
-        st.write("**📁 Current Positions**")
+        st.write(f"**{t('current_positions')}**")
         if not pos_df.empty:
             v_holdings_ui = []
             for h in v_results["holdings"]:
@@ -1074,7 +1092,7 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
             
             # Rebalancing recommendations
             st.markdown("---")
-            st.write("⚖️ **Sector Rebalancing Recommendations**")
+            st.write(f"⚖️ **{t('rebalance_title')}**")
             recs = recommend_rebalancing(v_results, sector_scores, current_country, active_tickers_dict)
             if recs["has_recommendations"]:
                 st.info(recs["summary"])
@@ -1084,27 +1102,27 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
                 st.success(recs["summary"])
         else:
             if key_suffix == "real_portfolio":
-                st.info("No active positions in this account. Please upload your Rakuten CSV file above to begin.")
+                st.info(t("no_positions_real"))
             else:
-                st.info("No active positions in this account. Use the Transaction form above to buy stocks.")
+                st.info(t("no_positions_paper"))
             
     with v_col_right:
-        st.write("**🚨 Macro Headwind Risks**")
+        st.write(f"**{t('risk_title')}**")
         if not pos_df.empty:
             v_headwind_holdings = [h for h in v_results["holdings"] if h["macro_score"] <= -10.0]
             if v_headwind_holdings:
-                st.warning(f"Detected {len(v_headwind_holdings)} holdings facing macro economic headwinds:")
+                st.warning(t("risk_detected", count=len(v_headwind_holdings)))
                 for h in v_headwind_holdings:
                     st.markdown(f"""
                     * **{h['name']} ({h['ticker']})**: Macro Score: `{h['macro_score']:+.1f}`
                       *Rationale:* {h['rationale']}
                     """)
             else:
-                st.success("No positions in this account are facing macroeconomic headwinds.")
+                st.success(t("no_risk"))
         else:
-            st.info("Account is empty.")
+            st.info(t("empty_account"))
 
-        st.write("**📜 Transaction History**")
+        st.write(f"**{t('tx_history')}**")
         if acc.history:
             hist_ui = []
             for h in reversed(acc.history):
@@ -1124,7 +1142,7 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
                 key=f"pt_history_tbl_{key_suffix}"
             )
         else:
-            st.write("No transaction logs.")
+            st.write(t("no_tx_logs"))
 
 # Setup tabs for 5 accounts
 account_keys = ["Macro Tailwind Focus", "Defensive & Income", "Aggressive Growth", "Long-Term Value", "Sandbox"]
@@ -1137,24 +1155,29 @@ for tab_idx, k in enumerate(account_keys):
 
 # --- 9. MY PORTFOLIO ANALYSIS SECTION (ACTUAL LAST SECTION) ---
 st.markdown("---")
-st.subheader("💼 My Portfolio Macro Analyzer")
-st.markdown("""
-Upload your holdings file exported from **Rakuten Securities (楽天証券)** to analyze how your 
-entire portfolio aligns with the G20 macroeconomic environment.
+st.subheader(t("portfolio_analyzer_title"))
+st.markdown(t("portfolio_analyzer_desc"))
+st.markdown(t("privacy_notice"))
 
-🔒 **Security & Privacy Notice (セキュリティとプライバシーについて)**:
-Your uploaded CSV file is processed entirely in your browser's session memory. No data is saved to our servers, and closing this browser tab instantly deletes all your information.
-*(アップロードされたCSVファイルは、一時的にお使いのブラウザセッションメモリ上でのみ処理され、サーバーに保存されることはありません。タブを閉じるとデータはサーバーのメモリから完全に消去されますので、安心してお試しください。)*
-""")
+# Download template CSV
+st.info(t("sample_info"))
+sample_csv = "ticker,qty,cost\nAAPL,10,150.0\n7203.T,100,2000.0\n8306.T,200,1000.0\nMSFT,5,350.0\n"
+st.download_button(
+    label=t("dl_sample_btn"),
+    data=sample_csv,
+    file_name="sample_portfolio.csv",
+    mime="text/csv",
+    key="dl_sample_portfolio_csv"
+)
 
 uploaded_file = st.file_uploader(
-    "Upload Rakuten Securities CSV (国内株式/米国株式)", 
+    t("upload_label"), 
     type=["csv", "txt"],
     key="portfolio_uploader"
 )
 
 if uploaded_file is not None:
-    st.success("Successfully imported portfolio data! See the analysis of your holdings below:")
+    st.success(t("import_success"))
 
 # Display the Portfolio analysis report here!
 real_portfolio_acc = st.session_state.real_portfolio

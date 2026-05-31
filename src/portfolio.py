@@ -5,69 +5,82 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def parse_rakuten_csv(uploaded_file) -> pd.DataFrame:
+def parse_portfolio_csv(uploaded_file) -> pd.DataFrame:
     """
-    Parses a Rakuten Securities CSV file (for JP or US stocks)
+    Parses a portfolio CSV file (from Rakuten, SBI, or standard Universal format)
     and returns a normalized DataFrame with:
     - ticker (str)
     - qty (float)
     - cost (float)
     """
     raw_data = uploaded_file.read()
-    # Try different Japanese and UTF-8 encodings
-    for encoding in ['shift_jis', 'cp932', 'utf-8', 'utf-8-sig']:
+    # Try different encodings
+    for encoding in ['utf-8', 'utf-8-sig', 'shift_jis', 'cp932']:
         try:
             text = raw_data.decode(encoding)
             break
         except UnicodeDecodeError:
             continue
     else:
-        raise ValueError("Could not decode the CSV file. Please upload a valid CSV encoded in Shift_JIS or UTF-8.")
+        raise ValueError("Could not decode the CSV file. Please upload a valid CSV encoded in UTF-8 or Shift_JIS.")
 
     lines = text.split('\n')
     start_idx = -1
+    
+    # Supported column mappings case-insensitive
+    ticker_synonyms = ['ticker', 'symbol', 'code', 'コード', 'ティッカー', '銘柄コード', '銘柄']
+    qty_synonyms = ['qty', 'quantity', 'shares', '保有数量', '数量', '保有口数', '残高', '株数']
+    cost_synonyms = ['cost', 'cost_basis', 'price', 'average_price', 'average_cost', '取得単価', '平均取得価額', '平均取得価格', '参考単価', '単価']
+
+    # Find the header row
     for idx, line in enumerate(lines):
-        # Identify the header line containing Rakuten's standard keys
-        if 'コード' in line or 'ティッカー' in line or '保有数量' in line:
+        line_lower = line.lower()
+        has_ticker = any(s in line_lower for s in ticker_synonyms)
+        has_qty = any(s in line_lower for s in qty_synonyms)
+        has_cost = any(s in line_lower for s in cost_synonyms)
+        if has_ticker and has_qty and has_cost:
             start_idx = idx
             break
 
     if start_idx == -1:
-        raise ValueError("Invalid format: CSV must contain 'コード' (JP stocks) or 'ティッカー' (US stocks).")
+        raise ValueError(
+            "Could not identify header row. The CSV must contain columns for Ticker/Symbol, Quantity, and Average Cost. "
+            "(CSVのヘッダー行が見つかりませんでした。銘柄コード/ティッカー、保有数量、平均取得単価に対応する列が必要です。)"
+        )
 
     # Read CSV starting from the identified header line
     df = pd.read_csv(io.StringIO('\n'.join(lines[start_idx:])))
     
-    # Standardize columns
+    # Strip column names
+    df.columns = [str(c).strip().lower() for c in df.columns]
+    
+    # Map columns
     ticker_col = None
-    for col in ['コード', 'ティッカー', '銘柄コード']:
-        if col in df.columns:
-            ticker_col = col
+    for s in ticker_synonyms:
+        if s in df.columns:
+            ticker_col = s
             break
             
     qty_col = None
-    for col in ['保有数量', '数量', '保有口数']:
-        if col in df.columns:
-            qty_col = col
+    for s in qty_synonyms:
+        if s in df.columns:
+            qty_col = s
             break
 
     cost_col = None
-    for col in ['平均取得価額', '取得単価', '平均取得価格']:
-        if col in df.columns:
-            cost_col = col
+    for s in cost_synonyms:
+        if s in df.columns:
+            cost_col = s
             break
 
     if not ticker_col or not qty_col or not cost_col:
-        raise ValueError(
-            f"Required columns not found. Found columns: {list(df.columns)}. "
-            "Please ensure the CSV is exported from Rakuten Securities Portfolio page."
-        )
+        raise ValueError("Failed to map required columns.")
 
     # Clean data (remove NaN, empty values)
     df = df.dropna(subset=[ticker_col, qty_col])
     
     # Remove rows that are totals or non-data (e.g., '合計')
-    df = df[df[ticker_col].apply(lambda x: str(x).strip() != '' and '合計' not in str(x))]
+    df = df[df[ticker_col].apply(lambda x: str(x).strip() != '' and '合計' not in str(x) and 'total' not in str(x).lower())]
     
     # Standardize Tickers and values
     result_data = []
@@ -82,12 +95,11 @@ def parse_rakuten_csv(uploaded_file) -> pd.DataFrame:
         if raw_ticker.endswith('.0'):
             raw_ticker = raw_ticker[:-2]
             
-        # Clean ticker: Rakuten JP CSV codes are integers (e.g. 7203 or '7203')
-        # If it's a 4-digit digit or number, append '.T' for Yahoo Finance
+        # Clean ticker: If it's a 4-digit digit or number, append '.T' for Yahoo Finance
         if raw_ticker.isdigit() and len(raw_ticker) == 4:
             ticker = f"{raw_ticker}.T"
         else:
-            ticker = raw_ticker
+            ticker = raw_ticker.upper() # Standardize to uppercase for global tickers (e.g. AAPL)
 
         # Clean quantity and cost
         try:
@@ -97,7 +109,6 @@ def parse_rakuten_csv(uploaded_file) -> pd.DataFrame:
             qty = float(qty_val)
             cost = float(cost_val)
         except Exception:
-            # Skip rows where quantity or cost cannot be parsed (e.g. headers, footer text)
             continue
             
         result_data.append({

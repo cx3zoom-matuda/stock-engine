@@ -2,8 +2,7 @@ import io
 import pytest
 import pandas as pd
 from unittest.mock import AsyncMock, MagicMock
-from src.portfolio import parse_rakuten_csv, evaluate_portfolio_macro, recommend_rebalancing
-# (Replace import at the top of file or here)
+from src.portfolio import parse_portfolio_csv, evaluate_portfolio_macro, recommend_rebalancing
 
 from src.evaluator import StockEvaluator
 
@@ -22,9 +21,22 @@ AAPL,Apple Inc.,10,150,180,2,"300"
 NVDA,NVIDIA Corp,5,800,900,15,"500"
 """
 
-def test_parse_rakuten_csv_jp():
+# Mock CSV for Japanese stocks from SBI
+MOCK_SBI_JP_CSV = """株式残高一覧
+銘柄コード,銘柄名,保有数量,取得単価,現在値,評価損益
+7203,トヨタ自動車,150,"2,100",2200,"15,000"
+8306,三菱UFJFG,300,"1,050",1200,"45,000"
+"""
+
+# Mock Universal CSV
+MOCK_UNIVERSAL_CSV = """ticker,qty,cost
+AAPL,15,145.5
+NVDA,10,750
+"""
+
+def test_parse_portfolio_csv_rakuten_jp():
     file_mock = io.BytesIO(MOCK_RAKUTEN_JP_CSV.encode('shift_jis'))
-    df = parse_rakuten_csv(file_mock)
+    df = parse_portfolio_csv(file_mock)
     assert len(df) == 2
     assert list(df.columns) == ["ticker", "qty", "cost"]
     
@@ -36,9 +48,9 @@ def test_parse_rakuten_csv_jp():
     assert mufg["qty"] == 200.0
     assert mufg["cost"] == 1000.0
 
-def test_parse_rakuten_csv_us():
+def test_parse_portfolio_csv_rakuten_us():
     file_mock = io.BytesIO(MOCK_RAKUTEN_US_CSV.encode('utf-8'))
-    df = parse_rakuten_csv(file_mock)
+    df = parse_portfolio_csv(file_mock)
     assert len(df) == 2
     
     aapl = df[df["ticker"] == "AAPL"].iloc[0]
@@ -48,6 +60,32 @@ def test_parse_rakuten_csv_us():
     nvda = df[df["ticker"] == "NVDA"].iloc[0]
     assert nvda["qty"] == 5.0
     assert nvda["cost"] == 800.0
+
+def test_parse_portfolio_csv_sbi_jp():
+    file_mock = io.BytesIO(MOCK_SBI_JP_CSV.encode('shift_jis'))
+    df = parse_portfolio_csv(file_mock)
+    assert len(df) == 2
+    
+    toyota = df[df["ticker"] == "7203.T"].iloc[0]
+    assert toyota["qty"] == 150.0
+    assert toyota["cost"] == 2100.0
+
+    mufg = df[df["ticker"] == "8306.T"].iloc[0]
+    assert mufg["qty"] == 300.0
+    assert mufg["cost"] == 1050.0
+
+def test_parse_portfolio_csv_universal():
+    file_mock = io.BytesIO(MOCK_UNIVERSAL_CSV.encode('utf-8'))
+    df = parse_portfolio_csv(file_mock)
+    assert len(df) == 2
+    
+    aapl = df[df["ticker"] == "AAPL"].iloc[0]
+    assert aapl["qty"] == 15.0
+    assert aapl["cost"] == 145.5
+
+    nvda = df[df["ticker"] == "NVDA"].iloc[0]
+    assert nvda["qty"] == 10.0
+    assert nvda["cost"] == 750.0
 
 @pytest.mark.asyncio
 async def test_evaluate_portfolio_macro():
