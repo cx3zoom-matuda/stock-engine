@@ -101,7 +101,23 @@ TRANSLATIONS = {
         "upload_label": "Upload Portfolio CSV (IBKR, Schwab, Rakuten, SBI, or custom template)",
         "import_success": "Successfully imported portfolio data! See the analysis of your holdings below:",
         "dl_sample_btn": "📥 Download sample_portfolio.csv",
-        "sample_info": "Don't have a CSV file? Download a sample template, edit it, and upload it!"
+        "sample_info": "Don't have a CSV file? Download a sample template, edit it, and upload it!",
+        "screener_tab": "🔍 Market Screener & Hub",
+        "verification_tab": "📈 Verification Board",
+        "dl_report_btn": "📥 Export Portfolio Review (PDF/HTML)",
+        "ver_title": "📊 Prediction Self-Verification Dashboard",
+        "ver_desc": "This dashboard displays the historical accuracy and returns of the macro-engine predictions over time.",
+        "overall_hit_rate": "Overall Hit Rate",
+        "buy_win_rate": "BUY Hit Rate",
+        "avoid_win_rate": "AVOID Hit Rate",
+        "avg_return": "Avg Return",
+        "total_predictions": "Total Tracked",
+        "decision_filter": "Decision Filter",
+        "status_filter": "Status Filter",
+        "update_prices_btn": "🔄 Verify & Update Prices",
+        "status_hit": "Hit 🟢",
+        "status_miss": "Miss 🔴",
+        "status_pending": "Pending ⏳"
     },
     "jp": {
         "page_title": "G20マクロ＆株式評価ハブ",
@@ -203,7 +219,23 @@ TRANSLATIONS = {
         "upload_label": "ポートフォリオCSVファイルをアップロード (IBKR, Schwab, 楽天, SBI 等)",
         "import_success": "ポートフォリオデータの取り込みに成功しました！以下の分析レポートを確認してください：",
         "dl_sample_btn": "📥 sample_portfolio.csv をダウンロード",
-        "sample_info": "ポートフォリオをお持ちでないですか？ テンプレートファイルをダウンロード・編集してアップロードしてお試しください！"
+        "sample_info": "ポートフォリオをお持ちでないですか？ テンプレートファイルをダウンロード・編集してアップロードしてお試しください！",
+        "screener_tab": "🔍 スクリーナー ＆ 仮想取引ハブ",
+        "verification_tab": "📈 予測の自己検証ボード",
+        "dl_report_btn": "📥 ポートフォリオ診断レポートの出力 (PDF/HTML)",
+        "ver_title": "📊 予測の自己検証ダッシュボード",
+        "ver_desc": "このダッシュボードは、マクロエンジンの予測（BUY/WATCH/AVOID）の歴史的な的中率とリターンを測定・検証します。",
+        "overall_hit_rate": "全体の的中率",
+        "buy_win_rate": "BUY的中率",
+        "avoid_win_rate": "AVOID的中率",
+        "avg_return": "平均リターン",
+        "total_predictions": "追跡対象の総予測数",
+        "decision_filter": "予測判定フィルター",
+        "status_filter": "検証結果フィルター",
+        "update_prices_btn": "🔄 最新株価で検証・更新",
+        "status_hit": "成功 🟢",
+        "status_miss": "失敗 🔴",
+        "status_pending": "判定中 ⏳"
     }
 }
 

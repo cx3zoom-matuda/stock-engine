@@ -241,6 +241,81 @@ def run_screening_pipeline(tickers_by_country, fred_api_key):
         
     return raw_macro, stock_metrics_map, futures_history
 
+
+def render_verification_board_ui():
+    from src.tracker import PredictionTracker
+    db_tracker = PredictionTracker()
+    
+    st.subheader(t("ver_title"))
+    st.markdown(t("ver_desc"))
+    st.markdown("---")
+    
+    # 1. Update verification prices button
+    col_btn, _ = st.columns([3, 4])
+    with col_btn:
+        if st.button(t("update_prices_btn"), use_container_width=True):
+            with st.spinner("Fetching current prices from yfinance to update database..."):
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    updated, errors = loop.run_until_complete(db_tracker.update_prices())
+                    st.success(f"Verification data updated: {updated} records updated, {errors} errors.")
+                    st.rerun()
+                finally:
+                    loop.close()
+                    
+    st.markdown("") # Spacing
+
+    # 2. KPI Cards
+    kpis = db_tracker.calculate_kpis()
+    k_cols = st.columns(4)
+    k_cols[0].metric(t("overall_hit_rate"), f"{kpis['overall_hit_rate']:.1f}%")
+    k_cols[1].metric(t("buy_win_rate"), f"{kpis['buy_hit_rate']:.1f}%", f"{t('avg_return')}: {kpis['buy_avg_return']:+.2f}%")
+    k_cols[2].metric(t("avoid_win_rate"), f"{kpis['avoid_hit_rate']:.1f}%", f"{t('avg_return')}: {kpis['avoid_avg_return']:+.2f}%")
+    k_cols[3].metric(t("total_predictions"), f"{kpis['total_tracked']}")
+    
+    st.markdown("---")
+
+    # 3. Filter dropdowns
+    f_col1, f_col2, _ = st.columns([3, 3, 4])
+    with f_col1:
+        dec_filter = st.selectbox(t("decision_filter"), ["All", "BUY", "WATCH", "AVOID"])
+    with f_col2:
+        stat_filter = st.selectbox(t("status_filter"), ["All", "Hit", "Miss", "Pending"])
+        
+    st.markdown("") # Spacing
+
+    # 4. History Table
+    history = db_tracker.get_history(decision_filter=dec_filter, status_filter=stat_filter)
+    if history:
+        ui_rows = []
+        for item in history:
+            status_val = item["hit_status"]
+            status_lbl = t("status_hit") if status_val == "Hit" else t("status_miss") if status_val == "Miss" else t("status_pending")
+            
+            ui_rows.append({
+                "Date": item["prediction_date"],
+                "Ticker": item["ticker"],
+                "Name": item["name"],
+                "Decision": item["predicted_decision"],
+                "Start Price": item["start_price"],
+                "Current Price": item["current_price"] if item["current_price"] is not None else item["start_price"],
+                "Return": f"{item['return_pct']:+.2f}%",
+                "Status": status_lbl,
+                "Macro Score": item["macro_score"],
+                "Valuation Score": item["valuation_score"],
+                "Combined Score": item["combined_score"]
+            })
+        st.dataframe(
+            pd.DataFrame(ui_rows).style.map(style_decision, subset=["Decision"]),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.info("No prediction history matches the active filters.")
+
+
 # Sidebar configuration
 st.sidebar.header(t("sidebar_title"))
 
@@ -254,6 +329,17 @@ new_lang = "en" if lang_choice == "English" else "jp"
 if new_lang != st.session_state.language:
     st.session_state.language = new_lang
     st.rerun()
+
+# Navigation Page Selector
+page_selection = st.sidebar.radio(
+    "🧭 Navigation" if st.session_state.language == "en" else "🧭 ナビゲーション",
+    [t("screener_tab"), t("verification_tab")],
+    key="nav_page"
+)
+
+if page_selection == t("verification_tab"):
+    render_verification_board_ui()
+    st.stop()
 
 # API Keys
 fred_api_key_input = st.sidebar.text_input(
@@ -821,6 +907,15 @@ evaluator = StockEvaluator()
 evaluated_stocks = evaluator.evaluate_stocks(country_stock_metrics, sector_scores, market=current_country)
 
 if evaluated_stocks:
+    # Log predictions to tracking database
+    try:
+        from src.tracker import PredictionTracker
+        db_tracker = PredictionTracker()
+        db_tracker.log_predictions(evaluated_stocks)
+    except Exception as log_err:
+        logger.warning(f"Failed to log predictions to database: {log_err}")
+
+if evaluated_stocks:
     col_tbl, col_pnl = st.columns([5, 4])
     
     with col_tbl:
@@ -1100,6 +1195,23 @@ def render_account_ui(acc, key_suffix, show_transaction_form=True):
                     st.markdown(f"* {action['description']}")
             else:
                 st.success(recs["summary"])
+                
+            # Export Portfolio review report
+            try:
+                from src.portfolio import generate_portfolio_html_report
+                report_html = generate_portfolio_html_report(
+                    acc, v_results, sector_scores, current_country, st.session_state.language
+                )
+                st.markdown("---")
+                st.download_button(
+                    label=t("dl_report_btn"),
+                    data=report_html,
+                    file_name=f"macro_portfolio_review_{key_suffix}.html",
+                    mime="text/html",
+                    key=f"dl_report_btn_{key_suffix}"
+                )
+            except Exception as exp_err:
+                st.warning(f"Could not generate report: {exp_err}")
         else:
             if key_suffix == "real_portfolio":
                 st.info(t("no_positions_real"))
