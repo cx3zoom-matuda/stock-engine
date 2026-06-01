@@ -266,7 +266,8 @@ def recommend_rebalancing(
     portfolio_results: Dict[str, Any],
     sector_scores: Dict[str, Dict[str, Any]],
     current_country: str,
-    config_tickers: Dict[str, List[str]]
+    config_tickers: Dict[str, List[str]],
+    language: str = "jp"
 ) -> Dict[str, Any]:
     """
     Analyzes the evaluated portfolio results and current sector scores 
@@ -275,12 +276,13 @@ def recommend_rebalancing(
     holdings = portfolio_results.get("holdings", [])
     sector_alloc = portfolio_results.get("sector_allocation", {})
     total_value = portfolio_results.get("total_value", 0.0)
+    is_en = (language == "en")
     
     if not holdings or total_value == 0:
         return {
             "has_recommendations": False,
             "actions": [],
-            "summary": "ポートフォリオが空、または評価価値が0のため、提案はありません。"
+            "summary": "No holdings or portfolio value is 0. No suggestions available." if is_en else "ポートフォリオが空、または評価価値が0のため、提案はありません。"
         }
         
     # 1. Identify Headwind Sectors (Score < 0) currently held
@@ -314,14 +316,14 @@ def recommend_rebalancing(
         return {
             "has_recommendations": False,
             "actions": [],
-            "summary": "現在、ポートフォリオ内にマクロ経済の逆風を受けているセクターポジションはありません。健全なアロケーションです。"
+            "summary": "No active positions in this portfolio are facing macroeconomic headwinds. Allocation is healthy." if is_en else "現在、ポートフォリオ内にマクロ経済の逆風を受けているセクターポジションはありません。健全なアロケーションです。"
         }
         
     if not tailwind_sectors:
         return {
             "has_recommendations": False,
             "actions": [],
-            "summary": "現在、市場全体に強力なマクロ追い風が吹いているセクターが存在しないため、セクター移動の推奨はありません。"
+            "summary": "No sector moves recommended as there are no strong macroeconomic tailwinds in the market currently." if is_en else "現在、市場全体に強力なマクロ追い風が吹いているセクターが存在しないため、セクター移動の推奨はありません。"
         }
 
     # 3. Generate action items
@@ -337,6 +339,24 @@ def recommend_rebalancing(
         reduce_holdings = [x for x in holdings if x["sector"] == h_sec["sector"]]
         reduce_names = ", ".join([f"{x['name']} ({x['ticker']})" for x in reduce_holdings])
         
+        from_sector_name = h_sec["sector"].replace('_', ' ').title()
+        to_sector_name = t_sec["sector"].replace('_', ' ').title()
+        
+        if is_en:
+            desc = (
+                f"[Recommend Reduction] Positions [{reduce_names}] in the '{from_sector_name}' sector "
+                f"(allocation: {h_sec['percent']:.1f}%) are facing macro headwinds (score: {h_sec['score']:+.1f}). "
+                f"It is recommended to reduce these positions and reallocate capital to the '{to_sector_name}' sector "
+                f"which has macro tailwinds (score: {t_sec['score']:+.1f})."
+            )
+        else:
+            desc = (
+                f"【削減推奨】マクロ逆風 (スコア: {h_sec['score']:+.1f}) にさらされている "
+                f"「{from_sector_name}」セクター (保有比率: {h_sec['percent']:.1f}%) のポジション "
+                f"[{reduce_names}] を削減し、マクロ追い風 (スコア: {t_sec['score']:+.1f}) の "
+                f"「{to_sector_name}」セクターへ資金を移動することを推奨します。"
+            )
+            
         actions.append({
             "from_sector": h_sec["sector"],
             "from_score": h_sec["score"],
@@ -344,18 +364,18 @@ def recommend_rebalancing(
             "to_sector": t_sec["sector"],
             "to_score": t_sec["score"],
             "reduce_holdings": reduce_names,
-            "description": (
-                f"【削減推奨】マクロ逆風 (スコア: {h_sec['score']:+.1f}) にさらされている "
-                f"「{h_sec['sector'].replace('_', ' ').title()}」セクター (保有比率: {h_sec['percent']:.1f}%) のポジション "
-                f"[{reduce_names}] を削減し、マクロ追い風 (スコア: {t_sec['score']:+.1f}) の "
-                f"「{t_sec['sector'].replace('_', ' ').title()}」セクターへ資金を移動することを推奨します。"
-            )
+            "description": desc
         })
+
+    if is_en:
+        summary = f"Currently, {len(headwind_sectors)} sectors in your holdings are facing macroeconomic headwinds. Consider rebalancing into tailwind sectors."
+    else:
+        summary = f"現在保有ポジションのうち {len(headwind_sectors)} つのセクターがマクロ経済の逆風を受けています。追い風セクターへのアロケーション再配分を検討してください。"
 
     return {
         "has_recommendations": True,
         "actions": actions,
-        "summary": f"現在保有ポジションのうち {len(headwind_sectors)} つのセクターがマクロ経済 of 逆風を受けています。追い風セクターへのアロケーション再配分を検討してください。"
+        "summary": summary
     }
 
 

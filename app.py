@@ -12,10 +12,38 @@ from src.evaluator import StockEvaluator
 from src.config import load_config, COUNTRY_SERIES_MAP
 from src.providers.factory import ProviderFactory
 from src.translations import t
+from src.db import init_db, seed_demo_data, get_connection, get_user_by_email
+
+# Initialize SQLite database and seed data on startup
+init_db()
+seed_demo_data()
+
+# Ensure user is in session state (default to demo user)
+if "user" not in st.session_state:
+    st.session_state.user = get_user_by_email("demo@example.com")
+
 
 # Initialize language in session state
 if "language" not in st.session_state:
     st.session_state.language = "en"
+
+# Initialize page navigation from query parameters if present
+if "page" in st.query_params:
+    page_param = st.query_params["page"].lower()
+    route_map = {
+        "screener": t("screener_tab"),
+        "portfolio": t("portfolios_tab"),
+        "vault": t("portfolios_tab"),
+        "timeline": t("timeline_tab"),
+        "alerts": t("alerts_tab"),
+        "verification": t("verification_tab"),
+        "contact": t("contact_tab"),
+        "readme": t("readme_tab"),
+        "docs": t("readme_tab"),
+    }
+    target_page = route_map.get(page_param)
+    if target_page and ("nav_page" not in st.session_state or st.session_state.nav_page != target_page):
+        st.session_state.nav_page = target_page
 
 # Set page config with premium dashboard settings
 st.set_page_config(
@@ -318,6 +346,7 @@ def render_verification_board_ui():
 
 def render_readme_ui():
     import pathlib
+    is_jp = (st.session_state.language == "jp")
     
     st.markdown("""
     <style>
@@ -368,102 +397,786 @@ def render_readme_ui():
     st.markdown('<div class="subtitle-text">Technical Specifications, User Manual & Mathematical Logic</div>', unsafe_allow_html=True)
 
     # Custom Domain Branding Link
-    st.markdown("""
-    <div class="link-banner">
-        🚀 <strong>本システムのオフィシャルカスタムドメイン:</strong> 
-        <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> から安全にアクセスいただけます。
-    </div>
-    """, unsafe_allow_html=True)
+    if is_jp:
+        st.markdown("""
+        <div class="link-banner">
+            🚀 <strong>本システムのオフィシャルカスタムドメイン:</strong> 
+            <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> から安全にアクセスいただけます。
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="link-banner">
+            🚀 <strong>Official Custom Domain for this System:</strong> 
+            <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> - Secure access from anywhere.
+        </div>
+        """, unsafe_allow_html=True)
 
     tab_howto, tab_logic = st.tabs([
-        "📖 1. 使い方ガイド (HOWTO)",
-        "📊 2. クオンツ判定ロジック (Logic)"
+        "📖 1. 使い方ガイド (HOWTO)" if is_jp else "📖 1. User Guide (HOWTO)",
+        "📊 2. クオンツ判定ロジック (Logic)" if is_jp else "📊 2. Quantitative Logic (Logic)"
     ])
 
     with tab_howto:
-        st.markdown('<h3 class="logic-header">保有ポートフォリオ診断 ＆ ツール操作手順</h3>', unsafe_allow_html=True)
+        if is_jp:
+            st.markdown('<h3 class="logic-header">保有ポートフォリオ診断 ＆ ツール操作手順</h3>', unsafe_allow_html=True)
+            howto_file = "HOWTO.md"
+        else:
+            st.markdown('<h3 class="logic-header">Brokerage Portfolio Diagnostics & System Operations</h3>', unsafe_allow_html=True)
+            howto_file = "HOWTO_EN.md"
+            
         current_dir = pathlib.Path(__file__).parent
-        howto_path = current_dir / "HOWTO.md"
+        howto_path = current_dir / howto_file
         if howto_path.exists():
             with open(howto_path, "r", encoding="utf-8") as f:
                 howto_content = f.read()
             st.markdown(howto_content)
         else:
-            st.error("使い方ガイド（HOWTO.md）ファイルが見つかりません。")
+            st.error(f"Required guide file ({howto_file}) not found.")
 
     with tab_logic:
-        st.markdown('<h3 class="logic-header">システムアーキテクチャ & パイプライン</h3>', unsafe_allow_html=True)
-        st.write(
-            "本システムは、リアルタイムのマクロ時系列データ（経済環境）と個別銘柄の財務指標（ミクロデータ）を融合させて投資判断を導き出す、**「トップダウン・アプローチ」**を採用したクオンツ評価エンジンです。"
-        )
-        
-        st.info("""
-        **🔄 処理パイプラインの4つのステップ:**
-        1. **データ取得 (Data Ingestion)**: FRED APIおよびyfinanceからマクロ時系列データと個別財務データを取得・クレンジング。
-        2. **シグナル検出 (Event Detector)**: 移動平均線（SMA）や前月比、30日変化率を用いて、現在のマクロ指標から12種のエコノミックイベントを検出し、その深刻度（Severity）を決定。
-        3. **セクタースコアリング (Rule Engine)**: 検出されたイベントを、静的な「産業別インパクトマトリクス」へ通し、17セクターに対する累積影響度スコアを算出・正規化。
-        4. **銘柄総合スクリーニング (Stock Evaluator)**: 各国の市場特性に適合させたバリュエーションモデル（PER/PBR評価）を適用し、マクロ適合度と統合して最終意思決定（BUY / WATCH / AVOID）を決定。
-        """)
-        
+        if is_jp:
+            st.markdown('<h3 class="logic-header">システムアーキテクチャ & パイプライン</h3>', unsafe_allow_html=True)
+            st.write(
+                "本システムは、リアルタイムのマクロ時系列データ（経済環境）と個別銘柄の財務指標（ミクロデータ）を融合させて投資判断を導き出す、「トップダウン・アプローチ」を採用したクオンツ評価エンジンです。"
+            )
+            st.info("""
+            **🔄 処理パイプライン of 4つのステップ:**
+            1. **データ取得 (Data Ingestion)**: FRED APIおよびyfinanceからマクロ時系列データと個別財務データを取得・クレンジング。
+            2. **シグナル検出 (Event Detector)**: 移動平均線（SMA）や前月比、30日変化率を用いて、現在のマクロ指標から12種のエコノミックイベントを検出し、その深刻度（Severity）を決定。
+            3. **セクタースコアリング (Rule Engine)**: 検出されたイベントを、静的な「産業別インパクトマトリクス」へ通し、17セクターに対する累積影響度スコアを算出・正規化。
+            4. **銘柄総合スクリーニング (Stock Evaluator)**: 各国の市場特性に適合させたバリュエーションモデル（PER/PBR評価）を適用し、マクロ適合度と統合して最終意思決定（BUY / WATCH / AVOID）を決定。
+            """)
+        else:
+            st.markdown('<h3 class="logic-header">System Architecture & Processing Pipeline</h3>', unsafe_allow_html=True)
+            st.write(
+                "This platform implements a **top-down quantitative model** that dynamically integrates macro-economic variables (FRED indicators) with micro-level equity financials to formulate robust asset allocation advice."
+            )
+            st.info("""
+            **🔄 4-Stage Core Processing Pipeline:**
+            1. **Data Ingestion**: Programmatically aggregates and cleans macro-economic series from FRED and stock quotes from Yahoo Finance.
+            2. **Event Detector**: Analyzes monthly rate of change, 30-day volatility, and deviation from 50-day Simple Moving Averages (SMA) to identify 12 discrete economic shocks and compute their Severity.
+            3. **Rule Engine**: Maps active events to a static 'Industry Impact Matrix' to calculate weighted, normalized momentum scores across 17 distinct sectors.
+            4. **Stock Evaluator**: Combines normalized sector momentum with dynamic local market valuation filters (PER/PBR thresholds) to issue clear trading ratings (`BUY` / `WATCH` / `AVOID`).
+            """)
+            
         # Text flow diagram
         st.markdown("```")
-        st.markdown(" [マクロデータ (FRED)]                [市場データ (yfinance)]")
-        st.markdown("         │                                     │")
-        st.markdown("         ▼ (1. Ingestion)                      ▼ (1. Ingestion)")
-        st.markdown(" [時系列データクレンジング]              [PER, PBR, 株価データ]")
-        st.markdown("         │                                     │")
-        st.markdown("         ▼ (2. EventDetector)                  │")
-        st.markdown(" [マクロイベント検出 / Severity判定]            │")
-        st.markdown("         │                                     │")
-        st.markdown("         ▼ (3. RuleEngine)                     │")
-        st.markdown(" [17セクター別マクロ影響度スコア]               │")
-        st.markdown("         │                                     │")
-        st.markdown("         └───────────────► ─── ◄───────────────┘")
-        st.markdown("                           │ (4. StockEvaluator)")
-        st.markdown("                           ▼")
-        st.markdown("              [総合スコア (Combined Score)]")
-        st.markdown("                           │")
-        st.markdown("                           ▼")
-        st.markdown("              [投資判断 (BUY / WATCH / AVOID)]")
+        if is_jp:
+            st.markdown(" [マクロデータ (FRED)]                [市場データ (yfinance)]")
+            st.markdown("         │                                     │")
+            st.markdown("         ▼ (1. Ingestion)                      ▼ (1. Ingestion)")
+            st.markdown(" [時系列データクレンジング]              [PER, PBR, 株価データ]")
+            st.markdown("         │                                     │")
+            st.markdown("         ▼ (2. EventDetector)                  │")
+            st.markdown(" [マクロイベント検出 / Severity判定]            │")
+            st.markdown("         │                                     │")
+            st.markdown("         ▼ (3. RuleEngine)                     │")
+            st.markdown(" [17セクター別マクロ影響度スコア]               │")
+            st.markdown("         │                                     │")
+            st.markdown("         └───────────────► ─── ◄───────────────┘")
+            st.markdown("                           │ (4. StockEvaluator)")
+            st.markdown("                           ▼")
+            st.markdown("              [総合スコア (Combined Score)]")
+            st.markdown("                           │")
+            st.markdown("                           ▼")
+            st.markdown("              [投資判断 (BUY / WATCH / AVOID)]")
+        else:
+            st.markdown(" [Macro Data (FRED)]                  [Market Data (yfinance)]")
+            st.markdown("         │                                     │")
+            st.markdown("         ▼ (1. Ingestion)                      ▼ (1. Ingestion)")
+            st.markdown(" [Time-Series Data Cleansing]             [PER, PBR, Price Data]")
+            st.markdown("         │                                     │")
+            st.markdown("         ▼ (2. EventDetector)                  │")
+            st.markdown(" [Macro Event Detection & Severity]            │")
+            st.markdown("         │                                     │")
+            st.markdown("         ▼ (3. RuleEngine)                     │")
+            st.markdown(" [Macro Impact Scores (17 Sectors)]            │")
+            st.markdown("         │                                     │")
+            st.markdown("         └───────────────► ─── ◄───────────────┘")
+            st.markdown("                           │ (4. StockEvaluator)")
+            st.markdown("                           ▼")
+            st.markdown("              [Combined Score]")
+            st.markdown("                           │")
+            st.markdown("                           ▼")
+            st.markdown("              [Investment Decision (BUY / WATCH / AVOID)]")
         st.markdown("```")
 
-        st.markdown('<h3 class="logic-header">12のマクロイベント検出ロジック</h3>', unsafe_allow_html=True)
-        st.markdown("""
-        | 検出シグナル名 | 検出ロジック・閾値の計算 | Severity (重要度) の判定基準 |
-        | :--- | :--- | :--- |
-        | **金利上昇 (RATE_RISING)** | 10年国債利回りが50日単純移動平均(SMA)を上回っている状態 | 利回りと50日SMAの乖離幅に応じて **1 〜 3** |
-        | **金利下落 (RATE_FALLING)** | 10年国債利回りが50日SMAを下回っている状態 | 50日SMAと利回りの乖離幅に応じて **1 〜 3** |
-        | **高金利環境 (HIGH_RATE_ENVIRONMENT)** | 10年債利回りが長期警戒閾値（4.5%）を突破しているか | 利回りそのものの絶対値に応じて決定 |
-        | **インフレ加速 (INFLATION_ACCELERATING)** | 前年比(YoY)消費者物価指数(CPI)が上昇、または前月比(MoM)年率換算で 4.0% 以上 | YoYインフレ率が 3%以上で **Severity 2**, 5%以上で **Severity 3** |
-        | **インフレ減速 (INFLATION_DECELERATING)**| YoY CPIが低下傾向、または前月比年率換算が 2.0% 未満 | YoYインフレ率が 1.5%以下で **Severity 1**, 1%以下で **Severity 2**, マイナス（デフレ）で **Severity 3** |
-        | **原油ショック (ENERGY_SHOCK / OIL_SPIKE)** | WTI原油価格の30日変化率が大きく上昇している状態 | 30日変化率が +10%で **1**, +20%で **2**, +40%で **3** |
-        | **原油急落 (ENERGY_DECLINE / OIL_CRASH)** | WTI原油価格の30日変化率が大きく下落している状態 | 30日変化率が -10%で **1**, -20%で **2**, -40%で **3** |
-        | **通貨減価 / 自国通貨安 (YEN_DEPRECIATING)** | 対ドル為替レート（USD/JPY等）が50日SMAを上回り、30日変化率がマイナス（自国通貨安） | 30日変化率が 2%で **1**, 4%で **2**, 6%で **3** |
-        | **通貨増価 / 自国通貨高 (YEN_APPRECIATING)** | 対ドル為替レートが50日SMAを下回り、30日変化率がプラス（自国通貨高） | 30日変化率が 2%で **1**, 4%で **2**, 6%で **3** |
-        | **景気拡大 (BUSINESS_EXPANSION)** | ビジネス信頼感指数（PMIや短観）が好不況の閾値（50または100）を上回っている | 閾値から上方への乖離率に応じて **1 〜 3** |
-        | **景気後退 (BUSINESS_CONTRACTION)** | ビジネス信頼感指数（PMIや短観）が好不況の閾値（50または100）を下回っている | 閾値から下方への乖離率に応じて **1 〜 3** |
-        | **逆イールド (YIELD_CURVE_INVERSION)** | 10年国債利回り － 政策金利 ≦ 0% （イールドカーブ逆転） | 逆イールド検出時に一律 **Severity 2** （景気後退の強力な先行指標） |
-        """)
+        if is_jp:
+            st.markdown('<h3 class="logic-header">12のマクロイベント検出ロジック</h3>', unsafe_allow_html=True)
+            st.markdown("""
+            | 検出シグナル名 | 検出ロジック・閾値の計算 | Severity (重要度) の判定基準 |
+            | :--- | :--- | :--- |
+            | **金利上昇 (RATE_RISING)** | 10年国債利回りが50日単純移動平均(SMA)を上回っている状態 | 利回りと50日SMA of 乖離幅に応じて **1 〜 3** |
+            | **金利下落 (RATE_FALLING)** | 10年国債利回りが50日SMAを下回っている状態 | 50日SMAと利回りの乖離幅に応じて **1 〜 3** |
+            | **高金利環境 (HIGH_RATE_ENVIRONMENT)** | 10年債利回りが長期警戒閾値（4.5%）を突破しているか | 利回りそのものの絶対値に応じて決定 |
+            | **インフレ加速 (INFLATION_ACCELERATING)** | 前年比(YoY)消費者物価指数(CPI)が上昇、または前月比(MoM)年率換算で 4.0% 以上 | YoYインフレ率が 3%以上で **Severity 2**, 5%以上で **Severity 3** |
+            | **インフレ減速 (INFLATION_DECELERATING)**| YoY CPIが低下傾向、または前月比年率換算が 2.0% 未満 | YoYインフレ率が 1.5%以下で **Severity 1**, 1%以下で **Severity 2**, マイナス（デフレ）で **Severity 3** |
+            | **原油ショック (ENERGY_SHOCK / OIL_SPIKE)** | WTI原油価格の30日変化率が大きく上昇している状態 | 30日変化率が +10%で **1**, +20%で **2**, +40%で **3** |
+            | **原油急落 (ENERGY_DECLINE / OIL_CRASH)** | WTI原油価格の30日変化率が大きく下落している状態 | 30日変化率が -10%で **1**, -20%で **2**, -40%で **3** |
+            | **通貨減価 / 自国通貨安 (YEN_DEPRECIATING)** | 対ドル為替レート（USD/JPY等）が50日SMAを上回り、30日変化率がマイナス（自国通貨安） | 30日変化率が 2%で **1**, 4%で **2**, 6%で **3** |
+            | **通貨増価 / 自国通貨高 (YEN_APPRECIATING)** | 対ドル為替レートが50日SMAを下回り、30日変化率がプラス（自国通貨高） | 30日変化率が 2%で **1**, 4%で **2**, 6%で **3** |
+            | **景気拡大 (BUSINESS_EXPANSION)** | ビジネス信頼感指数（PMIや短観）が好不況の閾値（50または100）を上回っている | 閾値から上方への乖離率に応じて **1 〜 3** |
+            | **景気後退 (BUSINESS_CONTRACTION)** | ビジネス信頼感指数（PMIや短観）が好不況の閾値（50または100）を下回っている | 閾値から下方への乖離率に応じて **1 〜 3** |
+            | **逆イールド (YIELD_CURVE_INVERSION)** | 10年国債利回り － 政策金利 ≦ 0% （イールドカーブ逆転） | 逆イールド検出時に一律 **Severity 2** （景気後退の強力な先行指標） |
+            """)
+        else:
+            st.markdown('<h3 class="logic-header">12 Macro Economic Event Detection Rules</h3>', unsafe_allow_html=True)
+            st.markdown("""
+            | Signal Name | Detection Logic & Metrics Thresholds | Severity Level Assessment Criteria |
+            | :--- | :--- | :--- |
+            | **RATE_RISING** (Interest rate spike) | 10-year government bond yield sits above its 50-day Simple Moving Average (SMA). | Severity ranges **1 to 3** based on percentage-point gap over the 50-day SMA. |
+            | **RATE_FALLING** (Interest rate drop) | 10-year government bond yield sits below its 50-day SMA. | Severity ranges **1 to 3** based on negative gap under the 50-day SMA. |
+            | **HIGH_RATE_ENVIRONMENT** | 10-year yield breaks standard baseline defensive threshold (4.5%). | Automatically triggered based on absolute height of the yield. |
+            | **INFLATION_ACCELERATING** | Year-over-Year (YoY) Consumer Price Index (CPI) increases, or annualized MoM rate >= 4.0%. | **Severity 2** when YoY CPI >= 3.0%, **Severity 3** when YoY CPI >= 5.0%. |
+            | **INFLATION_DECELERATING** | YoY CPI slows or annualized MoM rate falls under 2.0% baseline. | **Severity 1** if <=1.5%, **Severity 2** if <=1.0%, **Severity 3** if negative (deflation). |
+            | **ENERGY_SHOCK / OIL_SPIKE** | 30-day rate of change in WTI crude oil futures rises significantly. | **Severity 1** at +10% gain, **Severity 2** at +20% gain, **Severity 3** at +40% gain. |
+            | **ENERGY_DECLINE / OIL_CRASH** | 30-day rate of change in WTI crude oil futures falls significantly. | **Severity 1** at -10% drop, **Severity 2** at -20% drop, **Severity 3** at -40% drop. |
+            | **CURRENCY_WEAKENING** (Weakening) | FX rate (e.g. USD/JPY) sits above 50-day SMA, 30-day change is negative. | **Severity 1** at 2% drop, **Severity 2** at 4% drop, **Severity 3** at 6% drop. |
+            | **CURRENCY_STRENGTHENING** (Strengthening) | FX rate sits below 50-day SMA, 30-day change is positive. | **Severity 1** at 2% gain, **Severity 2** at 4% gain, **Severity 3** at 6% gain. |
+            | **BUSINESS_EXPANSION** | Business sentiment index (PMI or Tankan) sits above standard neutral value (50 or 100). | Severity **1 to 3** scaled based on the size of the upward deviation. |
+            | **BUSINESS_CONTRACTION** | Business sentiment index (PMI or Tankan) sits below standard neutral value (50 or 100). | Severity **1 to 3** scaled based on the size of the downward deviation. |
+            | **YIELD_CURVE_INVERSION** | 10-Year yield minus Central Bank policy rate <= 0.0% (Inversion detected). | Flat **Severity 2** (highly predictive leading indicator of recessions). |
+            """)
 
-        st.markdown('<h3 class="logic-header">計算ロジックとバリュエーション評価</h3>', unsafe_allow_html=True)
-        st.latex(r"Raw\_Score_{Sector} = \sum_{Event} \left( Base\_Weight_{Event, Sector} \times Severity_{Event} \right)")
-        st.latex(r"Normalized\_Score_{Sector} = \frac{Raw\_Score_{Sector}}{\max \left( |Raw\_Score_{All\_Sectors}|, 1.0 \right)}")
+        if is_jp:
+            st.markdown('<h3 class="logic-header">計算ロジックとバリュエーション評価</h3>', unsafe_allow_html=True)
+            st.latex(r"Raw\_Score_{Sector} = \sum_{Event} \left( Base\_Weight_{Event, Sector} \times Severity_{Event} \right)")
+            st.latex(r"Normalized\_Score_{Sector} = \frac{Raw\_Score_{Sector}}{\max \left( |Raw\_Score_{All\_Sectors}|, 1.0 \right)}")
+            
+            st.markdown("""
+            #### 国別バリュエーション（PER / PBR）の評価基準 (日本 vs 米国/欧州 vs 中国)
+            * **日本 (JP) 基準**: PER ≦ 8.0 (+30点) / ≦ 13.0 (+15点) / ≦ 20.0 (0点) / ＞ 20.0 (-15点). PBR ≦ 0.7 (+20点) / ≦ 1.0 (+10点) / ≦ 1.8 (0点).
+            * **米国 (US) 基準**: PER ≦ 14.0 (+30点) / ≦ 22.0 (+15点) / ≦ 30.0 (0点) / ＞ 30.0 (-15点). PBR ≦ 1.5 (+20点) / ≦ 3.0 (+10点) / ≦ 5.5 (0点).
+            * **中国 (CN) 基準**: PER ≦ 10.0 (+30点) / ≦ 16.0 (+15点) / ≦ 24.0 (0点) / ＞ 24.0 (-15点). PBR ≦ 1.0 (+20点) / ≦ 1.8 (+10点) / ≦ 3.2 (0点).
+            """)
 
-        st.markdown("""
-        #### 国別バリュエーション（PER / PBR）の評価基準 (日本 vs 米国/欧州 vs 中国)
-        * **日本 (JP) 基準**: PER ≦ 8.0 (+30点) / ≦ 13.0 (+15点) / ≦ 20.0 (0点) / ＞ 20.0 (-15点). PBR ≦ 0.7 (+20点) / ≦ 1.0 (+10点) / ≦ 1.8 (0点).
-        * **米国 (US) 基準**: PER ≦ 14.0 (+30点) / ≦ 22.0 (+15点) / ≦ 30.0 (0点) / ＞ 30.0 (-15点). PBR ≦ 1.5 (+20点) / ≦ 3.0 (+10点) / ≦ 5.5 (0点).
-        * **中国 (CN) 基準**: PER ≦ 10.0 (+30点) / ≦ 16.0 (+15点) / ≦ 24.0 (0点) / ＞ 24.0 (-15点). PBR ≦ 1.0 (+20点) / ≦ 1.8 (+10点) / ≦ 3.2 (0点).
-        """)
+            st.markdown("""
+            #### 投資判断ルール
+            * **BUY**: マクロ影響度スコア ≧ 15 かつ バリュエーションスコア ≧ 10 (かつ PER > 0)
+            * **AVOID**: マクロ影響度スコア ≦ -15 または バリュエーションスコア ≦ -10 または PER ≦ 0
+            * **WATCH**: 上記以外のすべて
+            """)
+        else:
+            st.markdown('<h3 class="logic-header">Scoring Formulation & Valuation Metrics</h3>', unsafe_allow_html=True)
+            st.latex(r"Raw\_Score_{Sector} = \sum_{Event} \left( Base\_Weight_{Event, Sector} \times Severity_{Event} \right)")
+            st.latex(r"Normalized\_Score_{Sector} = \frac{Raw\_Score_{Sector}}{\max \left( |Raw\_Score_{All\_Sectors}|, 1.0 \right)}")
+            
+            st.markdown("""
+            #### Valuation Filters by Country/Region (PER / PBR) (Japan vs. US/EU vs. China)
+            * **Japan (JP) Rules**: PER <= 8.0 (+30 pts) / <= 13.0 (+15 pts) / <= 20.0 (0 pts) / > 20.0 (-15 pts). PBR <= 0.7 (+20 pts) / <= 1.0 (+10 pts) / <= 1.8 (0 pts).
+            * **United States (US) Rules**: PER <= 14.0 (+30 pts) / <= 22.0 (+15 pts) / <= 30.0 (0 pts) / > 30.0 (-15 pts). PBR <= 1.5 (+20 pts) / <= 3.0 (+10 pts) / <= 5.5 (0 pts).
+            * **China (CN) Rules**: PER <= 10.0 (+30 pts) / <= 16.0 (+15 pts) / <= 24.0 (0 pts) / > 24.0 (-15 pts). PBR <= 1.0 (+20 pts) / <= 1.8 (+10 pts) / <= 3.2 (0 pts).
+            """)
 
-        st.markdown("""
-        #### 投資判断ルール
-        * **BUY**: マクロ影響度スコア ≧ 15 かつ バリュエーションスコア ≧ 10 (かつ PER > 0)
-        * **AVOID**: マクロ影響度スコア ≦ -20、または バリュエーションスコア ≦ -25、または 赤字、または 各国の過剰高PER値（日40 / 中48 / 米60超）
-        * **WATCH**: 上記に当てはまらない中立・監視銘柄
-        """)
+            st.markdown("""
+            #### Final Investment Recommendation Matrix
+            * **BUY**: Macro alignment score >= 15 AND Valuation score >= 10 (and PER > 0)
+            * **AVOID**: Macro alignment score <= -15 OR Valuation score <= -10 OR PER <= 0
+            * **WATCH**: All other situations (default)
+            """)
+            
 
 
+# ==========================================
+# PRO TIER CUSTOM SCREENS (PORTFOLIOS VAULT, TIMELINE, ALERTS)
+# ==========================================
+
+def render_portfolios_vault_ui():
+    import sqlite3
+    import pandas as pd
+    import asyncio
+    from src.db import (
+        get_user_portfolios, get_portfolio_holdings, create_portfolio, 
+        delete_portfolio, save_holdings, get_notification_settings
+    )
+    from src.portfolio import parse_portfolio_csv, evaluate_portfolio_macro, recommend_rebalancing
+    from src.evaluator import StockEvaluator
+    from src.engine import RuleEngine
+    from src.market_data import MarketDataClient
+    
+    st.subheader(t("portfolios_tab"))
+    user = st.session_state.user
+    user_id = user["id"]
+    is_jp = (st.session_state.language == "jp")
+    
+    # 1. Fetch User Portfolios
+    portfolios = get_user_portfolios(user_id)
+    
+    # 2. Portfolio Creation Section
+    with st.expander("➕ Create New Portfolio or Upload CSV" if not is_jp else "➕ 新規ポートフォリオの作成・CSVのアップロード"):
+        real_ports_count = sum(1 for p in portfolios if p["is_virtual"] == 0)
+        
+        if user["plan"] != "Pro" and real_ports_count >= 1:
+            st.warning("⚠️ **Active Monitoring Limit**\n\nManual verification mode allows saving **1 portfolio**. Please enable Active Monitoring in the sidebar settings to register unlimited portfolios.")
+            allow_create = False
+        else:
+            allow_create = True
+            
+        p_name = st.text_input("Portfolio Name (e.g. My Retirement, Sandbox)" if not is_jp else "ポートフォリオ名 (例: 退職金運用, 成長株Sandbox)")
+        p_type = st.radio("Account Type" if not is_jp else "口座タイプ", ["Real Portfolio (Upload CSV)" if not is_jp else "実保有ポートフォリオ (CSVアップロード)", "Virtual Account (Paper Trading)" if not is_jp else "仮想口座 (ペーパートレード)"], index=0)
+        
+        uploaded_file = None
+        if p_type.startswith("Real") or p_type.startswith("実保有"):
+            uploaded_file = st.file_uploader(t("upload_label"), type=["csv"], key="vault_csv_uploader")
+            st.markdown(t("privacy_notice"))
+            
+        if st.button("Create Portfolio" if not is_jp else "ポートフォリオ作成", disabled=not allow_create):
+            if not p_name:
+                st.error("Please enter a portfolio name." if not is_jp else "ポートフォリオ名を入力してください。")
+            else:
+                is_virt = 1 if (p_type.startswith("Virtual") or p_type.startswith("仮想")) else 0
+                port_id = create_portfolio(user_id, p_name, is_virtual=is_virt)
+                if port_id:
+                    if is_virt == 0 and uploaded_file is not None:
+                        try:
+                            csv_content = uploaded_file.read().decode("utf-8")
+                            holdings = parse_portfolio_csv(csv_content)
+                            save_holdings(port_id, holdings)
+                            st.success(t("import_success"))
+                        except Exception as csv_err:
+                            st.error(f"Failed to parse CSV: {csv_err}" if not is_jp else f"CSVのパースに失敗しました: {csv_err}")
+                    st.success(f"Portfolio '{p_name}' created successfully!" if not is_jp else f"ポートフォリオ「{p_name}」が作成されました！")
+                    st.rerun()
+
+    # 3. Portfolio Selector
+    if not portfolios:
+        st.info("No portfolios found. Please create one above." if not is_jp else "保存されたポートフォリオはありません。上記から作成してください。")
+        return
+        
+    p_options = {p["id"]: f"{p['name']} ({'Paper Trading' if p['is_virtual'] == 1 else 'Real Holdings'})" for p in portfolios}
+    selected_p_id = st.selectbox("Select Portfolio to Inspect" if not is_jp else "表示するポートフォリオの選択", options=list(p_options.keys()), format_func=lambda x: p_options[x])
+    
+    selected_portfolio = next(p for p in portfolios if p["id"] == selected_p_id)
+    is_virtual = selected_portfolio["is_virtual"] == 1
+    
+    # Recalculate Now and Delete Buttons Row
+    col_recalc, col_del, _ = st.columns([2, 2, 6])
+    
+    market_client = MarketDataClient()
+    evaluator = StockEvaluator()
+    rule_engine = RuleEngine()
+    
+    # Run Recalculation
+    async def run_eval():
+        db_holdings = get_portfolio_holdings(selected_p_id)
+        if not db_holdings:
+            return {
+                "holdings": [],
+                "portfolio_macro_score": 0.0,
+                "total_cost": 0.0,
+                "total_value": 0.0,
+                "total_gain_loss": 0.0,
+                "total_gain_loss_percent": 0.0,
+                "sector_allocation": {}
+            }
+            
+        portfolio_data = []
+        for h in db_holdings:
+            portfolio_data.append({
+                "ticker": h["ticker"],
+                "qty": h["quantity"],
+                "cost": h["average_cost"]
+            })
+        portfolio_df = pd.DataFrame(portfolio_data)
+        
+        # Calculate active indicators and evaluate
+        results = await evaluate_portfolio_macro(portfolio_df, market_client, evaluator, {})
+        return results
+
+    if col_recalc.button("🔄 Recalculate Now" if not is_jp else "🔄 今すぐ再評価"):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            with st.spinner("Evaluating portfolio against G20 macro environment..." if not is_jp else "G20マクロ環境に合わせたポートフォリオ評価を実行中..."):
+                eval_results = loop.run_until_complete(run_eval())
+                st.success("Re-evaluation completed!" if not is_jp else "ポートフォリオの再評価が完了しました！")
+        finally:
+            loop.close()
+
+    if col_del.button("🗑️ Delete Portfolio" if not is_jp else "🗑️ ポートフォリオ削除"):
+        delete_portfolio(selected_p_id)
+        st.success("Portfolio deleted successfully!" if not is_jp else "ポートフォリオが削除されました！")
+        st.rerun()
+
+    # Load Holdings
+    db_holdings = get_portfolio_holdings(selected_p_id)
+    
+    # Rentering Virtual Paper Trading or Real Portfolio Holdings
+    if is_virtual:
+        st.markdown("### 🎮 Virtual Order Entry" if not is_jp else "### 🎮 仮想注文の実行")
+        t_col1, t_col2, t_col3, t_col4 = st.columns(4)
+        with t_col1:
+            trade_ticker = st.text_input(t("ticker_symbol"), key="vault_trade_ticker").strip()
+        with t_col2:
+            trade_side = st.selectbox(t("action"), ["BUY", "SELL"], key="vault_trade_side")
+        with t_col3:
+            trade_qty = st.number_input(t("quantity"), min_value=0.01, step=1.0, key="vault_trade_qty")
+        with t_col4:
+            manual_p = st.number_input(t("price"), min_value=0.0, step=1.0, key="vault_trade_price", help=t("price_help"))
+            
+        if st.button(t("submit_trade"), key="vault_submit_trade", use_container_width=True):
+            if not trade_ticker:
+                st.error(t("valid_ticker_error"))
+            else:
+                conn = sqlite3.connect("data/macro_cache.db")
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                try:
+                    price = manual_p
+                    if price == 0.0:
+                        import yfinance as yf
+                        t_data = yf.Ticker(trade_ticker)
+                        price = t_data.history(period="1d")["Close"].iloc[-1]
+                    
+                    cursor.execute("SELECT id, quantity, average_cost FROM holdings WHERE portfolio_id=? AND ticker=?", (selected_p_id, trade_ticker))
+                    pos = cursor.fetchone()
+                    
+                    if trade_side == "BUY":
+                        if pos:
+                            new_qty = pos["quantity"] + trade_qty
+                            new_cost = ((pos["quantity"] * pos["average_cost"]) + (trade_qty * price)) / new_qty
+                            cursor.execute("UPDATE holdings SET quantity=?, average_cost=? WHERE id=?", (new_qty, new_cost, pos["id"]))
+                        else:
+                            cursor.execute("INSERT INTO holdings (portfolio_id, ticker, quantity, average_cost, company_name, sector) VALUES (?, ?, ?, ?, ?, ?)",
+                                           (selected_p_id, trade_ticker, trade_qty, price, trade_ticker, "unknown"))
+                        st.success(t("bought_success", ticker=trade_ticker, qty=trade_qty, price=price, symbol="$"))
+                    elif trade_side == "SELL":
+                        if pos and pos["quantity"] >= trade_qty:
+                            new_qty = pos["quantity"] - trade_qty
+                            if new_qty == 0:
+                                cursor.execute("DELETE FROM holdings WHERE id=?", (pos["id"],))
+                            else:
+                                cursor.execute("UPDATE holdings SET quantity=? WHERE id=?", (new_qty, pos["id"]))
+                            st.success(t("sold_success", ticker=trade_ticker, qty=trade_qty, price=price, symbol="$"))
+                        else:
+                            st.error("Insufficient holdings to sell." if not is_jp else "売却するための保有残高が不足しています。")
+                    conn.commit()
+                except Exception as trade_err:
+                    st.error(t("fetch_price_error") + f" ({trade_err})")
+                finally:
+                    conn.close()
+                    st.rerun()
+
+    # Show Holdings Table
+    if not db_holdings:
+        st.info(t("no_positions_paper") if is_virtual else t("no_positions_real"))
+        return
+        
+    st.markdown("### 📁 Portfolio Positions" if not is_jp else "### 📁 保有銘柄一覧")
+    
+    # Recalculate evaluated scores
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        eval_results = loop.run_until_complete(run_eval())
+    finally:
+        loop.close()
+        
+    holdings_display = []
+    for h in eval_results["holdings"]:
+        holdings_display.append({
+            "Ticker": h["ticker"],
+            "Quantity": h["qty"],
+            "Cost Basis": f"${h['cost']:,.2f}",
+            "Market Price": f"${h['price']:,.2f}",
+            "Total Cost": f"${h['cost_basis']:,.2f}",
+            "Current Value": f"${h['value']:,.2f}",
+            "Macro Score": f"{h['macro_score']:+.1f}",
+            "Valuation Score": f"{h['valuation_score']:+.1f}",
+            "Decision": h["decision"]
+        })
+    st.dataframe(pd.DataFrame(holdings_display), use_container_width=True, hide_index=True)
+    
+    # Portfolio Metrics Summary
+    tot_val = eval_results["total_value"]
+    tot_cost = eval_results["total_cost"]
+    gain = eval_results["total_gain_loss"]
+    gain_pct = eval_results["total_gain_loss_percent"]
+    macro_s = eval_results["portfolio_macro_score"]
+    
+    met1, met2, met3, met4 = st.columns(4)
+    met1.metric("Total Asset Value" if not is_jp else "総資産額", f"${tot_val:,.2f}")
+    met2.metric("Total Cost" if not is_jp else "投資原資", f"${tot_cost:,.2f}")
+    met3.metric("Profit / Loss" if not is_jp else "評価損益", f"${gain:+,.2f}", f"{gain_pct:+.2f}%")
+    met4.metric("Portfolio Macro Score" if not is_jp else "ポートフォリオマクロスコア", f"{macro_s:+.2f}")
+    
+    # Sector Allocation & Rebalancing Recommendations
+    st.markdown("### ⚖️ Sector Allocations & Rebalancing Suggestions" if not is_jp else "### ⚖️ セクターアロケーション＆リバランス提案")
+    rebalance_data = recommend_rebalancing(
+        eval_results,
+        {},
+        "US",
+        {},
+        language=("en" if not is_jp else "jp")
+    )
+    
+    st.write(rebalance_data["summary"])
+    if rebalance_data["has_recommendations"]:
+        for action in rebalance_data["actions"]:
+            st.info(action["description"])
+            
+    # PDF / HTML Review Export
+    st.markdown("---")
+    st.subheader(t("dl_report_btn"))
+    if st.button("Generate Review Report (PDF/HTML)" if not is_jp else "診断レポートを生成"):
+        st.success("Report generation started! In a production environment, this will download a detailed report." if not is_jp else "レポート生成を開始しました。本番環境では詳細レポートのダウンロードが開始されます。")
+
+
+def render_macro_timeline_ui():
+    import pandas as pd
+    import asyncio
+    from src.db import get_macro_events_history, get_user_portfolios, get_portfolio_evaluations
+    from src.scheduler import trigger_macro_event
+    
+    st.subheader(t("timeline_tab"))
+    is_jp = (st.session_state.language == "jp")
+    user = st.session_state.user
+    
+    if user["plan"] != "Pro":
+        st.info("🔒 **Pro Tier Subscription Required**\n\nUpgrade to the $49/month Pro plan to access the Macro Event Timeline, review historical evaluations of your portfolio, and test automated trigger events.")
+        
+        st.markdown("### 📅 Live Demo (Timeline Preview)")
+        mock_events = [
+            {"detected_at": "2026-06-01 10:00:00", "event_type": "cpi_shock", "region": "US", "value": 5.2, "previous_value": 4.8, "severity": 3, "source": "FRED"},
+            {"detected_at": "2026-05-15 14:30:00", "event_type": "rate_hike", "region": "EZ", "value": 4.5, "previous_value": 4.25, "severity": 2, "source": "ECB"},
+            {"detected_at": "2026-05-01 09:00:00", "event_type": "oil_price_spike", "region": "Global", "value": 85.4, "previous_value": 72.1, "severity": 2, "source": "yfinance"}
+        ]
+        st.dataframe(pd.DataFrame(mock_events), use_container_width=True, hide_index=True)
+        return
+
+    col_trigger, col_timeline = st.columns([1, 1])
+    
+    with col_trigger:
+        st.markdown("### 🚨 Simulate Macro Economic Shock" if not is_jp else "### 🚨 定性マクロショックのシミュレーション")
+        st.markdown("デモ用にマクロショックを意図的に発生させ、保存されたポートフォリオの自動再評価およびアラート送信（ダミー送信/ログ出力）のライフサイクルをテストできます。" if is_jp else "You can simulate macro economic shocks to test the lifecycle of automated portfolio re-evaluations and alert dispatches (mocked log outputs).")
+        
+        ev_choice = st.selectbox(
+            "Event Type to Trigger" if not is_jp else "トリガーするイベントの種類",
+            ["cpi_shock", "rate_hike", "rate_cut", "gdp_drop", "oil_price_spike", "currency_crash"]
+        )
+        region_choice = st.selectbox("Region" if not is_jp else "対象国/地域", ["US", "JP", "EZ", "CN", "Global"])
+        val_input = st.number_input("Event Value" if not is_jp else "指標値", value=5.5)
+        prev_val_input = st.number_input("Previous Value" if not is_jp else "前回指標値", value=4.0)
+        sev_choice = st.slider("Event Severity" if not is_jp else "イベント深刻度 (Severity)", min_value=1, max_value=3, value=2)
+        
+        if st.button("Trigger Macro Shock" if not is_jp else "マクロショックをトリガー"):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                with st.spinner("Processing event and notifying user..." if not is_jp else "イベントを処理中＆ユーザーへの通知中..."):
+                    event_id = loop.run_until_complete(
+                        trigger_macro_event(
+                            event_type=ev_choice,
+                            region=region_choice,
+                            value=val_input,
+                            prev_value=prev_val_input,
+                            change_rate=37.5,
+                            severity=sev_choice,
+                            source="Demo Simulator"
+                        )
+                    )
+                    st.success(f"Macro Event (ID: {event_id}) processed and automated alerts logged!" if not is_jp else f"マクロイベント (ID: {event_id}) がトリガーされ、自動アラートが記録されました！")
+                    st.rerun()
+            finally:
+                loop.close()
+
+    with col_timeline:
+        st.markdown("### 📅 Macro Event History" if not is_jp else "### 📅 マクロ経済イベントログ履歴")
+        events = get_macro_events_history()
+        if events:
+            events_df = pd.DataFrame(events)
+            st.dataframe(events_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No macro events recorded in DB." if not is_jp else "DBに記録されたマクロイベントはありません。")
+
+
+def render_alert_settings_ui():
+    from src.db import get_notification_settings, save_notification_settings, update_user_plan, get_user_by_email
+    
+    st.subheader(t("alerts_tab"))
+    user = st.session_state.user
+    user_id = user["id"]
+    
+    # Reload user data to sync plan changes
+    user = get_user_by_email(user["email"])
+    st.session_state.user = user
+    current_plan = user["plan"]
+    
+    is_jp = (st.session_state.language == "jp")
+    
+    st.markdown("""
+    <style>
+        .premium-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(200, 165, 90, 0.2);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+        }
+        .pro-badge {
+            background: linear-gradient(135deg, #c8a55a 0%, #b48a32 100%);
+            color: #141410 !important;
+            font-weight: 800;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+        .free-badge {
+            background-color: #475569;
+            color: #f1f5f9 !important;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+            display: inline-block;
+        }
+        .price-text {
+            font-size: 32px;
+            font-weight: 800;
+            color: #e2e8f0;
+            margin: 15px 0;
+        }
+        .price-sub {
+            font-size: 14px;
+            color: #94a3b8;
+            font-weight: normal;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    # Demo controls: Allow switching active monitoring state
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🕹️ Monitoring Configurations" if not is_jp else "🕹️ 監視設定")
+    test_monitoring = st.sidebar.radio(
+        "Active Background Monitoring:" if not is_jp else "バックグラウンド監視の有効化:",
+        ["Disabled (Manual Mode)" if not is_jp else "無効 (手動確認モード)", "Enabled (Active Alerts)" if not is_jp else "有効 (自動マクロアラート発信)"],
+        index=0 if current_plan == "Free" else 1,
+        key="set_demo_plan"
+    )
+    test_plan = "Pro" if "Enabled" in test_monitoring or "有効" in test_monitoring else "Free"
+    if test_plan != current_plan:
+        update_user_plan(user_id, test_plan)
+        st.success("Monitoring settings updated!" if not is_jp else "バックグラウンド監視プランを更新しました！")
+        st.rerun()
+
+    # Display Current Active Status
+    if current_plan == "Pro":
+        st.markdown(f'<div class="premium-card"><h4>System Monitoring Status</h4><span class="pro-badge">ACTIVE MONITORING ENABLED</span><p style="color: #94a3b8; font-size:14px; margin-top: 10px;">The engine is continuously evaluating your holdings against changing macroeconomic environments.</p></div>' if not is_jp else f'<div class="premium-card"><h4>システム自動監視ステータス</h4><span class="pro-badge">自動バックグラウンド監視有効化</span><p style="color: #94a3b8; font-size:14px; margin-top: 10px;">マクロエンジンが市場指標の変更を検出し、保存されたポートフォリオへの影響をリアルタイムで監視しています。</p></div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f'<div class="premium-card"><h4>System Monitoring Status</h4><span class="free-badge">MANUAL VERIFICATION MODE</span><p style="color: #94a3b8; font-size:14px; margin-top: 10px;">You are currently in manual verification mode. Enable Active Monitoring in the sidebar controls to unlock automated macro alerts.</p></div>' if not is_jp else f'<div class="premium-card"><h4>システム自動監視ステータス</h4><span class="free-badge">手動検証モード</span><p style="color: #94a3b8; font-size:14px; margin-top: 10px;">手動診断のみ利用可能です。サイドバーの「バックグラウンド監視の有効化」を選択すると、Pro機能が有効になり、自動再評価とアラート通知が開始されます。</p></div>', unsafe_allow_html=True)
+        
+    # Get settings from DB
+    settings = get_notification_settings(user_id)
+    
+    # Alerts Setting Form
+    st.markdown("### ⚙️ Notification Preferences" if not is_jp else "### ⚙️ 自動通知アラート設定")
+    if current_plan != "Pro":
+        if is_jp:
+            st.info("⚠️ **自動監視はProプラン専用機能です。**サイドバーから「有効（自動マクロアラート発信）」を選択して、リアルタイム通知をテストしてください。")
+        else:
+            st.info("⚠️ **Active Monitoring must be enabled in the sidebar** to configure automated background notifications.")
+        
+    email_on = st.checkbox("Email Notifications Enabled" if not is_jp else "メール通知を有効化", value=(settings["email_enabled"] == 1), disabled=(current_plan != "Pro"))
+    telegram_on = st.checkbox("Telegram Notifications Enabled" if not is_jp else "Telegram通知を有効化", value=(settings.get("telegram_enabled", 0) == 1), disabled=(current_plan != "Pro"))
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        telegram_token = st.text_input(
+            "Telegram Bot Token" if not is_jp else "Telegram Botトークン",
+            value=settings.get("telegram_bot_token", ""),
+            type="password",
+            disabled=(not telegram_on or current_plan != "Pro"),
+            help="Get this from @BotFather on Telegram"
+        )
+    with col2:
+        telegram_chat = st.text_input(
+            "Telegram Chat ID" if not is_jp else "Telegram チャットID",
+            value=settings.get("telegram_chat_id", ""),
+            type="password",
+            disabled=(not telegram_on or current_plan != "Pro"),
+            help="Your chat or channel ID"
+        )
+    
+    min_sev = st.slider(
+        "Minimum Event Severity to Alert" if not is_jp else "通知する最小のイベント深刻度",
+        min_value=1,
+        max_value=3,
+        value=settings.get("min_severity", 2),
+        disabled=(current_plan != "Pro"),
+        help="1 = Mild, 2 = Moderate, 3 = Severe shock events"
+    )
+    
+    # Checklist for event types
+    st.write("**Alert on Event Types:**" if not is_jp else "**通知対象イベントの選択:**")
+    db_events = [x.strip().lower() for x in settings.get("event_types", "").split(",") if x.strip()]
+    
+    event_options = {
+        "cpi_shock": "CPI / Inflation shock" if not is_jp else "インフレ加速ショック (CPI)",
+        "rate_hike": "FOMC / Policy rate changes" if not is_jp else "利上げ / 政策金利の変更",
+        "gdp_drop": "GDP deceleration" if not is_jp else "GDP成長率の急減速",
+        "oil_price_spike": "Oil price spikes" if not is_jp else "原油価格の急騰ショック"
+    }
+    
+    selected_event_types = []
+    for ev_key, ev_label in event_options.items():
+        if st.checkbox(ev_label, value=(ev_key in db_events), disabled=(current_plan != "Pro"), key=f"alert_ev_{ev_key}"):
+            selected_event_types.append(ev_key)
+            
+    if st.button("Save Alert Settings" if not is_jp else "通知設定を保存", disabled=(current_plan != "Pro")):
+        save_notification_settings(
+            user_id=user_id,
+            email_enabled=1 if email_on else 0,
+            slack_enabled=0,
+            slack_webhook_url="",
+            min_severity=min_sev,
+            event_types=",".join(selected_event_types),
+            frequency="instant",
+            telegram_enabled=1 if telegram_on else 0,
+            telegram_bot_token=telegram_token,
+            telegram_chat_id=telegram_chat
+        )
+        st.success("Alert settings saved!" if not is_jp else "通知設定が正常に保存されました！")
+
+def render_contact_form_ui():
+    import requests
+    from src.db import save_inquiry, get_inquiries
+    
+    st.subheader(t("contact_title"))
+    st.markdown(t("contact_desc"))
+    st.markdown("---")
+    
+    is_jp = (st.session_state.language == "jp")
+    
+    with st.form("contact_inquiry_form", clear_on_submit=True):
+        name = st.text_input(t("contact_name"), placeholder="John Doe" if not is_jp else "山田 太郎")
+        email = st.text_input(t("contact_email"), placeholder="john@example.com" if not is_jp else "yamada@example.com")
+        subject = st.text_input(t("contact_subj"), placeholder="Feedback/Question" if not is_jp else "質問・フィードバック")
+        message = st.text_area(t("contact_msg"), placeholder="Write your message here..." if not is_jp else "お問い合わせ内容を入力してください...")
+        
+        submitted = st.form_submit_button(t("contact_submit"), use_container_width=True)
+        
+        if submitted:
+            if not name or not email or not message:
+                st.error("Please fill in Name, Email, and Message." if not is_jp else "お名前、メールアドレス、本文を入力してください。")
+            else:
+                try:
+                    # Submit to FormSubmit AJAX endpoint
+                    payload = {
+                        "name": name,
+                        "email": email,
+                        "_subject": f"[{subject}] from Stock Screener Hub",
+                        "message": message,
+                        "_captcha": "false"
+                    }
+                    response = requests.post(
+                        "https://formsubmit.co/ajax/macro@z0a.net",
+                        json=payload,
+                        headers={"Content-Type": "application/json"}
+                    )
+                    
+                    if response.status_code == 200 and response.json().get("success") == "true":
+                        # Save in SQLite DB
+                        save_inquiry(name=name, email=email, subject=subject, message=message)
+                        st.success(t("contact_success"))
+                    else:
+                        # Fallback: Save in SQLite DB anyway
+                        save_inquiry(name=name, email=email, subject=subject, message=message)
+                        warning_msg = "Your inquiry was saved to the local database, but we encountered an issue forwarding the email. Reason: " + response.text[:200] if st.session_state.language == "en" else "お問い合わせはローカルデータベースに保存されましたが、メール転送時に問題が発生しました。理由: " + response.text[:200]
+                        st.warning(warning_msg)
+                except Exception as ex:
+                    # Fallback: Save in SQLite DB anyway
+                    save_inquiry(name=name, email=email, subject=subject, message=message)
+                    warning_msg = f"Your inquiry was saved to the local database, but email routing is temporarily offline. Reason: {str(ex)[:200]}" if st.session_state.language == "en" else f"お問い合わせはローカルデータベースに保存されましたが、メールサービスに接続できませんでした。理由: {str(ex)[:200]}"
+                    st.warning(warning_msg)
+                    
+    # Notice for first time setup
+    st.info(t("contact_first_time_notice"))
+    st.markdown("---")
+    
+    # Render history
+    st.subheader(t("contact_history_title"))
+    history = get_inquiries(limit=10)
+    if history:
+        ui_rows = []
+        for item in history:
+            ui_rows.append({
+                "Date": item["submitted_at"],
+                "Name": item["name"],
+                "Email": item["email"],
+                "Subject": item["subject"],
+                "Message": item["message"]
+            })
+        st.dataframe(pd.DataFrame(ui_rows), use_container_width=True, hide_index=True)
+    else:
+        st.info(t("contact_no_history"))
+
+# Country names & maps
+COUNTRY_NAMES = {
+    "US": "United States" if st.session_state.language == "en" else "米国",
+    "JP": "Japan" if st.session_state.language == "en" else "日本",
+    "EZ": "Euro Area" if st.session_state.language == "en" else "ユーロ圏",
+    "GB": "United Kingdom" if st.session_state.language == "en" else "英国",
+    "CN": "China" if st.session_state.language == "en" else "中国",
+    "CA": "Canada" if st.session_state.language == "en" else "カナダ",
+    "AU": "Australia" if st.session_state.language == "en" else "オーストラリア"
+}
+
+COUNTRY_FLAGS = {
+    "US": "🇺🇸",
+    "JP": "🇯🇵",
+    "EZ": "🇪🇺",
+    "GB": "🇬🇧",
+    "CN": "🇨🇳",
+    "CA": "🇨🇦",
+    "AU": "🇦🇺"
+}
+
+CURRENCY_MAP = {
+    "JP": "¥",
+    "US": "$",
+    "EZ": "€",
+    "GB": "£",
+    "CA": "$",
+    "AU": "$"
+}
+
+def style_decision(val):
+    if val == "BUY":
+        return "background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; font-weight: bold;"
+    elif val == "AVOID":
+        return "background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; font-weight: bold;"
+    else:
+        return "background-color: rgba(241, 196, 15, 0.2); color: #f1c40f; font-weight: bold;"
+
+from src.paper_trade import PaperTradeAccount
+
+# Initialize paper trade accounts and real portfolio in session state
+if "paper_accounts" not in st.session_state:
+    st.session_state.paper_accounts = {
+        "Macro Tailwind Focus": PaperTradeAccount("📈 Macro Tailwind Focus", currency=CURRENCY_MAP.get("US", "$")),
+        "Defensive & Income": PaperTradeAccount("🛡️ Defensive & Income", currency=CURRENCY_MAP.get("US", "$")),
+        "Aggressive Growth": PaperTradeAccount("🚀 Aggressive Growth", currency=CURRENCY_MAP.get("US", "$")),
+        "Long-Term Value": PaperTradeAccount("💎 Long-Term Value", currency=CURRENCY_MAP.get("US", "$")),
+        "Sandbox": PaperTradeAccount("🧪 Sandbox", currency=CURRENCY_MAP.get("US", "$"))
+    }
+
+if "real_portfolio" not in st.session_state:
+    real_portfolio_name = "🇯🇵/🇺🇸 Real Portfolio (Rakuten CSV Sync)" if st.session_state.language == "en" else "🇯🇵/🇺🇸 Real Portfolio (楽天CSV連携)"
+    st.session_state.real_portfolio = PaperTradeAccount(real_portfolio_name, currency=CURRENCY_MAP.get("US", "$"))
+
+# Sync account currency dynamically based on current target market
+current_curr = CURRENCY_MAP.get(st.session_state.selected_country if "selected_country" in st.session_state else "US", "$")
+for acc_key, acc_obj in st.session_state.paper_accounts.items():
+    acc_obj.currency = current_curr
+if "real_portfolio" in st.session_state:
+    st.session_state.real_portfolio.currency = current_curr
+    st.session_state.real_portfolio.name = "🇯🇵/🇺🇸 Real Portfolio (Rakuten CSV Sync)" if st.session_state.language == "en" else "🇯🇵/🇺🇸 Real Portfolio (楽天CSV連携)"
 
 # Sidebar configuration
 st.sidebar.header(t("sidebar_title"))
@@ -482,12 +1195,49 @@ if new_lang != st.session_state.language:
 # Navigation Page Selector
 page_selection = st.sidebar.radio(
     "🧭 Navigation" if st.session_state.language == "en" else "🧭 ナビゲーション",
-    [t("screener_tab"), t("verification_tab"), t("readme_tab")],
+    [
+        t("screener_tab"),
+        t("portfolios_tab"),
+        t("timeline_tab"),
+        t("alerts_tab"),
+        t("verification_tab"),
+        t("contact_tab"),
+        t("readme_tab")
+    ],
     key="nav_page"
 )
 
+# Sync sidebar changes back to URL query params
+reverse_route_map = {
+    t("screener_tab"): "screener",
+    t("portfolios_tab"): "vault",
+    t("timeline_tab"): "timeline",
+    t("alerts_tab"): "alerts",
+    t("verification_tab"): "verification",
+    t("contact_tab"): "contact",
+    t("readme_tab"): "readme"
+}
+if page_selection in reverse_route_map:
+    st.query_params["page"] = reverse_route_map[page_selection]
+
+if page_selection == t("portfolios_tab"):
+    render_portfolios_vault_ui()
+    st.stop()
+
+if page_selection == t("timeline_tab"):
+    render_macro_timeline_ui()
+    st.stop()
+
+if page_selection == t("alerts_tab"):
+    render_alert_settings_ui()
+    st.stop()
+
 if page_selection == t("verification_tab"):
     render_verification_board_ui()
+    st.stop()
+
+if page_selection == t("contact_tab"):
+    render_contact_form_ui()
     st.stop()
 
 if page_selection == t("readme_tab"):
@@ -512,8 +1262,8 @@ if page_selection == t("readme_tab"):
         </style>
     """, unsafe_allow_html=True)
     
-    # Simple navigation header at the top
-    if st.button("◀ Back to Screener Hub / スクリーナーに戻る", use_container_width=True):
+    back_label = "◀ Back to Screener Hub" if st.session_state.language == "en" else "◀ スクリーナーに戻る"
+    if st.button(back_label, use_container_width=True):
         st.session_state.nav_page = t("screener_tab")
         st.rerun()
         
@@ -623,65 +1373,7 @@ def apply_manual_overrides(inputs_dict: Dict[str, Any]):
     if vix_p > 22.0:
         inputs_dict["business_contraction"] = True
 
-# Country names & maps
-COUNTRY_NAMES = {
-    "US": "United States" if st.session_state.language == "en" else "米国",
-    "JP": "Japan" if st.session_state.language == "en" else "日本",
-    "EZ": "Euro Area" if st.session_state.language == "en" else "ユーロ圏",
-    "GB": "United Kingdom" if st.session_state.language == "en" else "英国",
-    "CN": "China" if st.session_state.language == "en" else "中国",
-    "CA": "Canada" if st.session_state.language == "en" else "カナダ",
-    "AU": "Australia" if st.session_state.language == "en" else "オーストラリア"
-}
 
-COUNTRY_FLAGS = {
-    "US": "🇺🇸",
-    "JP": "🇯🇵",
-    "EZ": "🇪🇺",
-    "GB": "🇬🇧",
-    "CN": "🇨🇳",
-    "CA": "🇨🇦",
-    "AU": "🇦🇺"
-}
-
-CURRENCY_MAP = {
-    "JP": "¥",
-    "US": "$",
-    "EZ": "€",
-    "GB": "£",
-    "CA": "$",
-    "AU": "$"
-}
-
-def style_decision(val):
-    if val == "BUY":
-        return "background-color: rgba(46, 204, 113, 0.2); color: #2ecc71; font-weight: bold;"
-    elif val == "AVOID":
-        return "background-color: rgba(231, 76, 60, 0.2); color: #e74c3c; font-weight: bold;"
-    else:
-        return "background-color: rgba(241, 196, 15, 0.2); color: #f1c40f; font-weight: bold;"
-
-from src.paper_trade import PaperTradeAccount
-
-# Initialize paper trade accounts and real portfolio in session state
-if "paper_accounts" not in st.session_state:
-    st.session_state.paper_accounts = {
-        "Macro Tailwind Focus": PaperTradeAccount("📈 Macro Tailwind Focus", currency=CURRENCY_MAP.get("US", "$")),
-        "Defensive & Income": PaperTradeAccount("🛡️ Defensive & Income", currency=CURRENCY_MAP.get("US", "$")),
-        "Aggressive Growth": PaperTradeAccount("🚀 Aggressive Growth", currency=CURRENCY_MAP.get("US", "$")),
-        "Long-Term Value": PaperTradeAccount("💎 Long-Term Value", currency=CURRENCY_MAP.get("US", "$")),
-        "Sandbox": PaperTradeAccount("🧪 Sandbox", currency=CURRENCY_MAP.get("US", "$"))
-    }
-
-if "real_portfolio" not in st.session_state:
-    st.session_state.real_portfolio = PaperTradeAccount("🇯🇵/🇺🇸 Real Portfolio (楽天CSV連携)", currency=CURRENCY_MAP.get("US", "$"))
-
-# Sync account currency dynamically based on current target market
-current_curr = CURRENCY_MAP.get(st.session_state.selected_country if "selected_country" in st.session_state else "US", "$")
-for acc_key, acc_obj in st.session_state.paper_accounts.items():
-    acc_obj.currency = current_curr
-if "real_portfolio" in st.session_state:
-    st.session_state.real_portfolio.currency = current_curr
 
 # --- VISUAL COUNTRY SELECTOR (BIG FLAGS) AT THE TOP ---
 available_countries = [c for c in COUNTRY_SERIES_MAP.keys() if active_tickers_dict.get(c)]
@@ -1190,286 +1882,16 @@ if "portfolio_uploader" in st.session_state and st.session_state.portfolio_uploa
     except Exception as parse_err:
         pass
 
-# --- 8. PAPER TRADING SECTION (5 SECTIONS) ---
+# --- 8. REDIRECTION TO PREMIUM PORTFOLIOS VAULT ---
 st.markdown("---")
-st.subheader(t("paper_trading_title"))
-st.markdown(t("paper_trading_desc"))
-
-from src.market_data import MarketDataClient
-market_client = MarketDataClient()
-
-def render_account_ui(acc, key_suffix, show_transaction_form=True):
-    # 1. Save and Load UI (File upload & download button)
-    s_col1, s_col2, s_col3 = st.columns([2, 2, 3])
-    with s_col1:
-        json_str = acc.to_json()
-        st.download_button(
-            label=t("save_json"),
-            data=json_str,
-            file_name=f"trance_engine_portfolio_{key_suffix.lower().replace(' ', '_')}.json",
-            mime="application/json",
-            key=f"dl_btn_{key_suffix}"
-        )
-    with s_col2:
-        load_file = st.file_uploader(
-            t("load_json"), 
-            type=["json"], 
-            key=f"ul_file_{key_suffix}",
-            label_visibility="collapsed"
-        )
-        if load_file is not None:
-            try:
-                loaded_acc = PaperTradeAccount.from_json(load_file.read().decode('utf-8'))
-                if key_suffix == "real_portfolio":
-                    st.session_state.real_portfolio = loaded_acc
-                else:
-                    st.session_state.paper_accounts[key_suffix] = loaded_acc
-                st.success(t("load_success"))
-                st.rerun()
-            except Exception as load_err:
-                st.error(t("load_failed", load_err))
-    with s_col3:
-        if st.button(t("reset_acc"), key=f"reset_btn_{key_suffix}", use_container_width=True):
-            acc.reset()
-            st.success(t("reset_success"))
-            st.rerun()
-
-    # 2. Construct portfolio_df from virtual positions
-    pos_data = []
-    for ticker, pos in acc.holdings.items():
-        pos_data.append({
-            "ticker": ticker,
-            "qty": pos["qty"],
-            "cost": pos["cost"]
-        })
-        
-    pos_df = pd.DataFrame(pos_data)
-    
-    # Evaluate virtual portfolio
-    async def run_virtual_eval():
-        return await evaluate_portfolio_macro(
-            pos_df,
-            market_client,
-            evaluator,
-            sector_scores
-        )
-        
-    if not pos_df.empty:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            v_results = loop.run_until_complete(run_virtual_eval())
-        finally:
-            loop.close()
-    else:
-        v_results = {
-            "holdings": [],
-            "portfolio_macro_score": 0.0,
-            "total_cost": 0.0,
-            "total_value": 0.0,
-            "total_gain_loss": 0.0,
-            "total_gain_loss_percent": 0.0,
-            "sector_allocation": {}
-        }
-
-    # 3. Account metrics summary
-    c_val = acc.cash + v_results["total_value"]
-    gain = c_val - acc.initial_balance
-    gain_pct = (gain / acc.initial_balance * 100.0) if acc.initial_balance > 0 else 0.0
-    
-    m_cols = st.columns(5)
-    m_cols[0].metric(t("cash_balance"), f"{acc.currency}{acc.cash:,.2f}" if acc.currency != "¥" else f"¥{acc.cash:,.0f}")
-    m_cols[1].metric(t("stock_value"), f"{acc.currency}{v_results['total_value']:,.2f}" if acc.currency != "¥" else f"¥{v_results['total_value']:,.0f}")
-    m_cols[2].metric(t("total_assets"), f"{acc.currency}{c_val:,.2f}" if acc.currency != "¥" else f"¥{c_val:,.0f}")
-    gain_c = "normal" if gain >= 0 else "inverse"
-    m_cols[3].metric(t("profit_loss"), f"{acc.currency}{gain:+,.2f}" if acc.currency != "¥" else f"¥{gain:+,.0f}", f"{gain_pct:+.2f}%", delta_color=gain_c)
-    
-    p_score = v_results["portfolio_macro_score"]
-    is_en = (st.session_state.language == "en")
-    p_status = ("Tailwind 🟢" if is_en else "追い風 🟢") if p_score >= 10.0 else ("Headwind 🔴" if is_en else "逆風 🔴") if p_score <= -10.0 else ("Neutral 🟡" if is_en else "中立 🟡")
-    m_cols[4].metric(t("macro_score"), f"{p_score:+.2f}", p_status)
-
-    # 4. Form for executing virtual BUY/SELL
-    if show_transaction_form:
-        with st.expander(t("execute_transaction")):
-            t_col1, t_col2, t_col3, t_col4 = st.columns(4)
-            with t_col1:
-                trade_ticker = st.text_input(t("ticker_symbol"), key=f"t_ticker_{key_suffix}").strip()
-            with t_col2:
-                trade_side = st.selectbox(t("action"), ["BUY", "SELL"], key=f"t_side_{key_suffix}")
-            with t_col3:
-                trade_qty = st.number_input(t("quantity"), min_value=0.01, step=1.0, key=f"t_qty_{key_suffix}")
-            with t_col4:
-                manual_p = st.number_input(t("price"), min_value=0.0, step=1.0, key=f"t_price_{key_suffix}", 
-                                           help=t("price_help"))
-
-            if st.button(t("submit_trade"), key=f"t_submit_{key_suffix}", use_container_width=True):
-                if not trade_ticker:
-                    st.error(t("valid_ticker_error"))
-                else:
-                    try:
-                        trade_price = manual_p
-                        if trade_price == 0.0:
-                            async def fetch_p():
-                                return await market_client.fetch_stock_metrics(trade_ticker)
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            try:
-                                met = loop.run_until_complete(fetch_p())
-                                trade_price = met["price"]
-                            finally:
-                                loop.close()
-                            if trade_price == 0.0:
-                                st.error(t("fetch_price_error"))
-                                st.stop()
-                        
-                        if trade_side == "BUY":
-                            acc.buy(trade_ticker, trade_qty, trade_price)
-                            st.success(t("bought_success", qty=trade_qty, ticker=trade_ticker, price=trade_price, symbol=acc.currency))
-                        else:
-                            acc.sell(trade_ticker, trade_qty, trade_price)
-                            st.success(t("sold_success", qty=trade_qty, ticker=trade_ticker, price=trade_price, symbol=acc.currency))
-                        st.rerun()
-                    except Exception as t_err:
-                        st.error(f"Transaction failed: {t_err}")
-
-    # 5. Position table and charts
-    v_col_left, v_col_right = st.columns([3, 2])
-    with v_col_left:
-        st.write(f"**{t('current_positions')}**")
-        if not pos_df.empty:
-            v_holdings_ui = []
-            for h in v_results["holdings"]:
-                symbol = acc.currency
-                h_val_str = f"{symbol}{h['value']:,.2f}" if symbol != "¥" else f"¥{h['value']:,.0f}"
-                h_cost_str = f"{symbol}{h['cost']:,.2f}" if symbol != "¥" else f"¥{h['cost']:,.0f}"
-                h_gain_str = f"{symbol}{h['gain_loss']:+,.2f}" if symbol != "¥" else f"¥{h['gain_loss']:+,.0f}"
-                
-                v_holdings_ui.append({
-                    "Decision": h["decision"],
-                    "Ticker": h["ticker"],
-                    "Name": h["name"],
-                    "Sector": h["sector"].replace("_", " ").title(),
-                    "Weight": f"{h['weight']*100:.1f}%",
-                    "Avg Cost": h_cost_str,
-                    "Price": f"{symbol}{h['price']:,.2f}" if symbol != "¥" else f"¥{h['price']:,.0f}",
-                    "Current Value": h_val_str,
-                    "Unrealized Gain/Loss": f"{h_gain_str} ({h['gain_loss_percent']:+.2f}%)",
-                    "Macro Score": f"{h['macro_score']:+.1f}"
-                })
-            st.dataframe(
-                pd.DataFrame(v_holdings_ui).style.map(style_decision, subset=["Decision"]),
-                use_container_width=True,
-                hide_index=True,
-                key=f"pt_positions_tbl_{key_suffix}"
-            )
-            
-            # Rebalancing recommendations
-            st.markdown("---")
-            st.write(f"⚖️ **{t('rebalance_title')}**")
-            recs = recommend_rebalancing(v_results, sector_scores, current_country, active_tickers_dict)
-            if recs["has_recommendations"]:
-                st.info(recs["summary"])
-                for action in recs["actions"]:
-                    st.markdown(f"* {action['description']}")
-            else:
-                st.success(recs["summary"])
-                
-            # Export Portfolio review report
-            try:
-                from src.portfolio import generate_portfolio_html_report
-                report_html = generate_portfolio_html_report(
-                    acc, v_results, sector_scores, current_country, st.session_state.language
-                )
-                st.markdown("---")
-                st.download_button(
-                    label=t("dl_report_btn"),
-                    data=report_html,
-                    file_name=f"macro_portfolio_review_{key_suffix}.html",
-                    mime="text/html",
-                    key=f"dl_report_btn_{key_suffix}"
-                )
-            except Exception as exp_err:
-                st.warning(f"Could not generate report: {exp_err}")
-        else:
-            if key_suffix == "real_portfolio":
-                st.info(t("no_positions_real"))
-            else:
-                st.info(t("no_positions_paper"))
-            
-    with v_col_right:
-        st.write(f"**{t('risk_title')}**")
-        if not pos_df.empty:
-            v_headwind_holdings = [h for h in v_results["holdings"] if h["macro_score"] <= -10.0]
-            if v_headwind_holdings:
-                st.warning(t("risk_detected", count=len(v_headwind_holdings)))
-                for h in v_headwind_holdings:
-                    st.markdown(f"""
-                    * **{h['name']} ({h['ticker']})**: Macro Score: `{h['macro_score']:+.1f}`
-                      *Rationale:* {h['rationale']}
-                    """)
-            else:
-                st.success(t("no_risk"))
-        else:
-            st.info(t("empty_account"))
-
-        st.write(f"**{t('tx_history')}**")
-        if acc.history:
-            hist_ui = []
-            for h in reversed(acc.history):
-                symbol = acc.currency
-                hist_ui.append({
-                    "Date": h["date"].split()[0] if " " in h["date"] else h["date"],
-                    "Ticker": h["ticker"],
-                    "Type": h["side"],
-                    "Qty": f"{h['qty']:.1f}" if h['qty'] % 1 != 0 else f"{h['qty']:.0f}",
-                    "Price": f"{symbol}{h['price']:,.2f}" if symbol != "¥" else f"¥{h['price']:,.0f}",
-                    "Total": f"{symbol}{h['total']:,.2f}" if symbol != "¥" else f"¥{h['total']:,.0f}"
-                })
-            st.dataframe(
-                pd.DataFrame(hist_ui),
-                use_container_width=True,
-                hide_index=True,
-                key=f"pt_history_tbl_{key_suffix}"
-            )
-        else:
-            st.write(t("no_tx_logs"))
-
-# Setup tabs for 5 accounts
-account_keys = ["Macro Tailwind Focus", "Defensive & Income", "Aggressive Growth", "Long-Term Value", "Sandbox"]
-pt_tabs = st.tabs([st.session_state.paper_accounts[k].name for k in account_keys])
-
-for tab_idx, k in enumerate(account_keys):
-    with pt_tabs[tab_idx]:
-        acc = st.session_state.paper_accounts[k]
-        render_account_ui(acc, k, show_transaction_form=True)
-
-# --- 9. MY PORTFOLIO ANALYSIS SECTION (ACTUAL LAST SECTION) ---
-st.markdown("---")
-st.subheader(t("portfolio_analyzer_title"))
-st.markdown(t("portfolio_analyzer_desc"))
-st.markdown(t("privacy_notice"))
-
-# Download template CSV
-st.info(t("sample_info"))
-sample_csv = "ticker,qty,cost\nAAPL,10,150.0\n7203.T,100,2000.0\n8306.T,200,1000.0\nMSFT,5,350.0\n"
-st.download_button(
-    label=t("dl_sample_btn"),
-    data=sample_csv,
-    file_name="sample_portfolio.csv",
-    mime="text/csv",
-    key="dl_sample_portfolio_csv"
-)
-
-uploaded_file = st.file_uploader(
-    t("upload_label"), 
-    type=["csv", "txt"],
-    key="portfolio_uploader"
-)
-
-if uploaded_file is not None:
-    st.success(t("import_success"))
-
-# Display the Portfolio analysis report here!
-real_portfolio_acc = st.session_state.real_portfolio
-render_account_ui(real_portfolio_acc, "real_portfolio", show_transaction_form=True)
+st.markdown(f"""
+<div style="background: linear-gradient(90deg, rgba(200, 165, 90, 0.1), rgba(30, 41, 59, 0.9)); border-left: 4px solid #c8a55a; padding: 25px; border-radius: 8px; margin-top: 30px;">
+    <h3 style="margin-top:0; color:#e8e0d0;">{t('redirect_banner_title')}</h3>
+    <p style="color:#94a3b8; font-size:14px; line-height: 1.5;">
+        {t('redirect_banner_desc1')}
+    </p>
+    <p style="color:#94a3b8; font-size:14px; line-height: 1.5;">
+        {t('redirect_banner_desc2')}
+    </p>
+</div>
+""", unsafe_allow_html=True)

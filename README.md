@@ -1,129 +1,259 @@
-# G20マクロ＆株式スクリーニングハブ 技術仕様書 (README)
+# Macro-to-Portfolio Translation Engine
+### Aligning Your Holdings with Changing Global Macroeconomic Environments
+---
 
-本システムは、G20諸国のマクロ経済指標および定性的な景気サイクルを分析し、**17の主要産業セクター**への影響度（マクロスコア）を算出します。さらに、個別企業のバリュエーション指標（PER、PBR）と組み合わせることで、各株式の投資判断を自動的に下すクオンツフレームワークです。
+## Why This Exists / なぜこれが必要なのか
+
+Every month, markets move because of:
+* CPI (消費者物価指数)
+* GDP (国内総生産)
+* Employment Reports (雇用統計)
+* Interest Rates (政策金利)
+* Oil Prices (原油価格)
+* Currency Markets (為替市場)
+* Central Bank Decisions (中央銀行の政策決定)
+
+Professional investors understand these events. Most retail investors do not.
+
+* **When CPI rises, what happens to your holdings?**
+* **When rates increase, which sectors become dangerous?**
+* **When GDP slows, which companies become vulnerable?**
+
+Most people are forced to guess. 
+
+**This platform exists to eliminate that guesswork.**
 
 ---
 
-## 1. 全体像・処理フロー (Top-Down Approach)
+毎月、市場は様々なマクロ経済指標や政策決定によって激しく動きます。
+プロの投資家はこれらのマクロイベントの影響を的確に理解し、保有資産を守り、先手を打ちます。しかし、多くの個人投資家はそうではありません。
 
-本システムは、マクロ経済の動向から個別銘柄の評価へ落とし込む**トップダウン・アプローチ**を採用しています。処理フローは以下の4段階のデータパイプラインで構成されています。
+* インフレ（CPI）が上昇したとき、あなたの保有銘柄には何が起きるか？
+* 金利が引き上げられたとき、どのセクターが危険地帯となるか？
+* GDPが減速したとき、どの企業が脆弱になるか？
 
+多くの投資家は「勘」で判断することを強いられています。
+
+**本プラットフォームは、その「不確実な推測」を排除するために存在します。**
+
+---
+
+## Macro Translation Examples / マクロ翻訳の具体例
+
+The engine translates macroeconomic shifts directly into portfolio impact and actions, rather than showing complex raw data. Here are three typical scenarios:
+
+システムは、複雑なマクロデータをただ表示するのではなく、保有銘柄への具体的な影響とアクションへと自動で翻訳します。以下は代表的な3つのシナリオ例です。
+
+### Example 1: CPI Shock (インフレショックの例)
 ```
-[データソース]
- - FRED (マクロ金利・インフレ・GDP等)
- - yfinance (株価・PER・PBR・先物等)
-       │
-       ▼
- 1. Ingestion (データ収集・キャッシュ層)
-       │
-       ▼
- 2. Event Detector (マクロシグナル検出)
-       │  - 50日移動平均 (SMA)
-       │  - 30日変化率 (ROC)
-       ▼
- 3. Rule Engine (セクター影響度スコアリング)
-       │  - 静的影響度マトリクス (Static Impact Matrix)
-       │  - 累積加算: Raw_Score = Σ(Base_Weight × Severity)
-       │  - 正規化: [-50.0, +50.0] のマクロスコア
-       ▼
- 4. Stock Evaluator (国別バリュエーション判定)
-          - PER/PBRのスコアリング (最大50点)
-          - 最終投資判断決定ツリー (BUY / WATCH / AVOID)
+[🚨 CPI SHOCK DETECTED]
+Severity: 2 (Moderate Shock)
+
+PORTFOLIO IMPACT:
+  🟢 Positive (Tailwinds): Banks, Insurance
+  🔴 Negative (Headwinds): Real Estate, High Growth Technology
+
+AFFECTED HOLDINGS IN YOUR VAULT:
+  - JPM  → BUY    (Financial sector tailwinds + discount valuation)
+  - NVDA → WATCH  (Growth sector headwinds balanced by earnings momentum)
+  - VNQ  → AVOID  (Real Estate sector severe interest rate headwind)
+
+SUGGESTED PORTFOLIO ACTION:
+  👉 Reduce Real Estate Exposure (VNQ)
+  👉 Increase Financial Exposure (JPM)
 ```
 
----
-
-## 2. マクロシグナル検出ロジック (Event Detector)
-
-インプットされた時間系列データを分析し、現在のアクティブなマクロシグナルとその深刻度（**Severity**: 1=軽微, 2=中程度, 3=重大）を判定します。
-
-### 主要12マクロイベントの検知ルール
-
-| シグナル名 (コード) | トリガー条件 | Severity: 1 (軽微) | Severity: 2 (中程度) | Severity: 3 (重大) |
-| :--- | :--- | :--- | :--- | :--- |
-| **長期金利急騰**<br>`long_rate_spike` | 10年債利回りの前月差 | $\ge +0.25\%$ | $\ge +0.50\%$ | $\ge +1.00\%$ |
-| **長期金利急落**<br>`long_rate_drop` | 10年債利回りの前月差 | $\le -0.25\%$ | $\le -0.50\%$ | $\le -1.00\%$ |
-| **政策金利利上げ**<br>`rate_hike` | 政策金利の前月差 | $\ge +0.05\%$ | $\ge +0.25\%$ | $\ge +0.50\%$ |
-| **政策金利利下げ**<br>`rate_cut` | 政策金利の前月差 | $\le -0.05\%$ | $\le -0.25\%$ | $\le -0.50\%$ |
-| **インフレ高進**<br>`inflation_high` | 消費者物価指数 (YoY CPI) | $\ge 2.0\%$ | $\ge 3.0\%$ | $\ge 5.0\%$ |
-| **低インフレ/デフレ**<br>`inflation_low` | 消費者物価指数 (YoY CPI) | $\le 1.5\%$ | $\le 1.0\%$ | $< 0.0\%$ (デフレ) |
-| **GDP成長加速**<br>`gdp_growth_accelerating` | GDP成長率 (YoY) | $\ge 2.5\%$ | $\ge 4.0\%$ | $\ge 6.0\%$ |
-| **GDP成長減速**<br>`gdp_growth_slowing` | GDP成長率 (YoY) | $\le 1.0\%$ | $\le 0.0\%$ | $\le -2.0\%$ (リセッション) |
-| **ビジネス景気拡大**<br>`business_expansion` | PMI $\ge 50$ / 短観 $\ge 100$ | 閾値以上 | $\ge$ 閾値 $\times 1.01$ | $\ge$ 閾値 $\times 1.03$ |
-| **ビジネス景気後退**<br>`business_contraction` | PMI $< 50$ / 短観 $< 100$ | 閾値未満 | $\le$ 閾値 $\times 0.99$ | $\le$ 閾値 $\times 0.97$ |
-| **逆イールド発生**<br>`yield_curve_inversion` | 10年債利回り $-$ 政策金利 $\le 0.0\%$ | - | 固定 Severity: 2 | - |
-| **イールド急傾斜化**<br>`yield_curve_steepening` | 10年債利回り $-$ 政策金利 $\ge 1.5\%$ | - | 固定 Severity: 2 | - |
-
-> ※ **定量的変化率ルール**: WTI原油、ゴールド、銅、天然ガス、為替レートは30日変化率（ROC）から判定されます（例: 原油が30日間で $+10\% / +20\% / +40\%$ 急騰すると、`oil_price_spike` の Severity 1 / 2 / 3 が発動）。
-
----
-
-## 3. セクター影響度マトリクス (Static Impact Matrix)
-
-シグナルが検出されると、17の主要セクターに対するインパクト値（`-50` 〜 `+50`）が適用されます。
-
-### スコア算出式
-各セクターの未調整スコア（$Raw\_Score$）は、各イベントの基本重み付け（$Base\_Weight$）にそのイベントの深刻度（$Severity$）を掛け合わせたものの累積和として計算されます。
-
-$$\text{Raw\_Score}_{\text{Sector}} = \sum_{i} \left( \text{Base\_Weight}_{\text{Sector}, i} \times \text{Severity}_{i} \right)$$
-
-### 正規化処理 (Normalization)
-計算された Raw Score は、今回の実行で検出された全セクターの中の最大絶対値で割ることで正規化され、**最大 $\pm 50.0$ ポイント**のスケールに変換されます。
-
-$$\text{Macro\_Score}_{\text{Sector}} = \left( \frac{\text{Raw\_Score}_{\text{Sector}}}{\max_{\text{all\_sectors}} | \text{Raw\_Score} |} \right) \times 50.0$$
-
-#### セクター別重み付けの例
-* **`long_rate_spike` (長期金利急騰)**:
-  * 銀行 (`bank`): $+40$ | 保険 (`insurance`): $+30$
-  * 不動産 (`real_estate`): $-40$ | 建設 (`construction`): $-20$
-* **`business_contraction` (不景気)**:
-  * 機械 (`machinery`): $-30$ | 自動車 (`automobile`): $-30$
-  * ディフェンシブセクター (生活必需品・医薬品等): 影響なし (相対的優位)
-
----
-
-## 4. 国別バリュエーション評価 (Valuation Score)
-
-個別銘柄の財務的な割安性を、**PER（最大30点）** と **PBR（最大20点）** の合計 **50点満点** でスコアリングします。市場ごとの金利環境や商習慣を考慮し、国別に異なる閾値マトリクスが自動適用されます。
-
-### 評価点配分テーブル (PER: 最大30点 / PBR: 最大20点)
-
-| 市場区分 | 評価項目 | 割安 (満点: +30 / +20) | やや割安 (+15 / +10) | 適正水準 (+0 / +0) | 割高 (-15 / -10) | 赤字/負債超過 (-20 / -10) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **日本 (JP)** | **PER** | $\le 8.0$ | $8.0 - 13.0$ | $13.0 - 20.0$ | $> 20.0$ | $\le 0.0$ |
-| | **PBR** | $\le 0.70$ | $0.70 - 1.00$ | $1.00 - 1.80$ | $> 1.80$ | $\le 0.0$ |
-| **中国 (CN)** | **PER** | $\le 10.0$ | $10.0 - 16.0$ | $16.0 - 24.0$ | $> 24.0$ | $\le 0.0$ |
-| | **PBR** | $\le 1.00$ | $1.00 - 1.80$ | $1.80 - 3.20$ | $> 3.20$ | $\le 0.0$ |
-| **米国・欧州等**<br>(US/EZ/GB/CA/AU) | **PER** | $\le 14.0$ | $14.0 - 22.0$ | $22.0 - 30.0$ | $> 30.0$ | $\le 0.0$ |
-| | **PBR** | $\le 1.50$ | $1.50 - 3.00$ | $3.00 - 5.50$ | $> 5.50$ | $\le 0.0$ |
-
----
-
-## 5. 投資判断決定ツリー (Final Decision Tree)
-
-最後に、セクターマクロスコア（最大 $\pm 50$）とバリュエーションスコア（最大満点 $50$）を合算し、**総合スコア (Combined Score: 最大 $\pm 100$)** を算出します。このスコアを基に、以下の決定木ロジックに従って最終投資判断を下します。
-
+### Example 2: Interest Rate Hike (金利上昇の例)
 ```
-                      [ 総合スコアの算出 ]
-                  (Combined = Macro + Valuation)
-                                │
-         ┌──────────────────────┼──────────────────────┐
-         ▼                      ▼                      ▼
-  【 BUY 判定条件 】     【 AVOID 判定条件 】     【 WATCH 判定 】
-   - Macro ≧ 15.0          - Macro ≦ -20.0          - 左記の条件に
-     (強力な追い風)          (過酷な逆風)             当てはまらない
-         AND                    OR                    中立・監視銘柄
-   - Valuation ≧ 10.0      - Valuation ≦ -25.0
-     (割安・フェア値)         (極めて割高)
-         AND                    OR
-   - PER > 0 (黒字)        - PER ＞ 警戒基準値*
-                                OR
-                           - PER ≦ 0 (赤字企業)
+[🚨 RATE HIKE DETECTED]
+Severity: 2 (Moderate Hike)
 
-* 警戒基準値: 日本=40.0, 中国=48.0, 米国・欧州=60.0 (これを超えるPERは自動的に AVOID となります)
+PORTFOLIO IMPACT:
+  🟢 Positive (Tailwinds): Banks, Insurance
+  🔴 Negative (Headwinds): Real Estate, Construction
+
+AFFECTED HOLDINGS IN YOUR VAULT:
+  - JPM  → BUY    (Financial sector tailwinds + discount valuation)
+  - BAC  → BUY    (Net interest margin improvements)
+  - VNQ  → AVOID  (Real Estate sector severe headwind from high borrowing costs)
+
+SUGGESTED PORTFOLIO ACTION:
+  👉 Reduce Rate-Sensitive Assets
+  👉 Increase Financial Exposure
+```
+
+### Example 3: GDP Slowdown (GDP成長減速の例)
+```
+[🚨 GDP SLOWDOWN DETECTED]
+Severity: 2 (Moderate Slowdown)
+
+PORTFOLIO IMPACT:
+  🟢 Positive (Tailwinds): Consumer Staples, Utilities
+  🔴 Negative (Headwinds): Industrials, Machinery, Cyclicals
+
+AFFECTED HOLDINGS IN YOUR VAULT:
+  - XLU  → BUY    (Defensive utility demand + yield alternative)
+  - PG   → WATCH  (Defensive consumer demand offset by valuation premiums)
+  - CAT  → AVOID  (Cyclical machinery/industrial slowdown under capital expenditure cuts)
+
+SUGGESTED PORTFOLIO ACTION:
+  👉 Increase Defensive Exposure
+  👉 Reduce Cyclical Exposure
 ```
 
 ---
 
-## 6. ライセンス & 免責事項
-本システムは株式投資のスクリーニングを補助するための技術的モデルであり、将来の投資収益を保証するものではありません。実際の投資判断は各個人の自己責任でお願いいたします。
+## What Happens When The Economy Changes? / 経済環境が変化するとき、何が起きるのか？
+
+When inflation rises, some sectors benefit. Others suffer.
+
+When interest rates move, your portfolio changes whether you notice it or not.
+
+When GDP slows, capital rotates across industries.
+
+Most investors react after markets move.
+
+**This engine helps investors understand those impacts before making portfolio decisions.**
+
+---
+
+インフレが上昇すると、一部のセクターは恩恵を受け、他のセクターは打撃を受けます。
+
+金利が変動すると、あなたが気づいているかどうかにかかわらず、ポートフォリオの実質的な価値は変化します。
+
+GDP成長が減速すると、資金は産業間をローテーション（循環）します。
+
+多くの投資家は、市場が動いた「後」に反応します。
+
+**本エンジンは、投資家がポートフォリオの意思決定を行う「前」に、これらの影響を理解し先手を打つことを支援します。**
+
+---
+
+## Who Is This For? / 対象となる投資家
+
+You already own stocks. You already have exposure to:
+* Interest Rates
+* Inflation
+* GDP Growth
+* Oil Prices
+* Currency Markets
+
+The question is not whether macroeconomics affects you.  
+**The question is whether you understand how exposed you are.**
+
+---
+
+あなたはすでに株式を所有しています。ということは、すでに以下の要素に自身の資産を晒している（リスクを取っている）ことになります：
+* 政策金利 / 長期金利
+* インフレ率（CPI）
+* GDP成長率
+* 原油・資源価格
+* 為替市場
+
+マクロ経済があなたの資産に影響を与えているかどうかは、議論の余地もありません。  
+**重要なのは、「自分がどれほどのリスクに晒されているか」を、あなた自身が理解しているかどうかです。**
+
+---
+
+### Individual Investors / 個人投資家
+For investors who own stocks but do not want to monitor economic releases every day.
+マクロ指標の発表を毎日追いかけたり、ニュースに振り回されたりしたくない個人投資家のためのシステムです。
+
+### Long-Term Investors / 長期投資家
+For investors who want to understand how changing macroeconomic conditions affect existing holdings.
+景気局面の変化が、現在保有しているポートフォリオにどのような長期的影響をもたらすかを把握したい投資家のためのシステムです。
+
+### Business Owners / 経営者・意思決定者
+For decision makers who need a simplified view of how economic changes impact financial assets.
+マクロ経済の動向が企業の金融資産に与える影響について、簡素化された明確な全体像を必要とする経営者のためのシステムです。
+
+### Global Investors / グローバル投資家
+For investors holding assets across multiple G20 countries, currencies, and sectors.
+複数の国、通貨、セクターに分散して資産を保有する、グローバルなアセットアロケーションを行っている投資家のためのシステムです。
+
+---
+
+## Core Capabilities / システムの提供する価値
+
+We do not sell a simple screening utility. We build an interactive decision-support layer to translate macroeconomic signals into direct risk management.
+
+### 1. Automated Macro Alerts (自動マクロイベント通知機能)
+* **Monitor & Detect**: The system actively monitors global indices for inflation shocks, policy rate hikes, or energy spikes.
+* **Recalculate & Alert**: Upon detecting an event, the system automatically evaluates its severity and translates the shift into portfolio rating changes (BUY / WATCH / AVOID), dispatching alerts via Telegram or Email.
+* **No Manual Analysis Required**: You receive immediate exposure rebalancing guidelines the moment the macro environment changes.
+
+### 2. Continuous Portfolio Translation (ポートフォリオ常時監視・翻訳)
+* **Register Once**: Submit your current holdings to the database once. The system continuously evaluates your portfolio against changing conditions.
+* **Identify Vulnerabilities**: You do not need to rebuild your watchlists manually when macroeconomic indicators shift. The engine identifies headwinds acting on your assets automatically.
+* **Rebalance Capital**: Access weighted recommendations to protect your portfolio and optimize capital allocations.
+
+### 3. Market Alignment Selector (市場マクロ適合度評価)
+* **Top-Down Filter**: Identify G20 opportunities (Japan, USA, China, Europe) by matching macro cycle tailwinds with underlying asset sectors.
+* **Valuation Score**: Drill down to evaluate individual stock values (PER, PBR) against country-specific standards.
+
+### 4. Historical Accuracy (過去の予測実績 - Track Record)
+* **Audit Scorecard**: The system tracks its own historical rating recommendations against actual live market performance.
+* **Transparency**: Measure historical hit rates, average returns, and model reliability curves to establish real statistical confidence.
+
+### 5. Paper Trading Sandbox (仮想取引検証)
+* **Simulate Strategies**: Run mock portfolios (e.g. Tailwind Focus, Defensive) to verify return cycles and macro alignment before deploying real capital.
+
+---
+
+## Appendix: Technical Specifications / 技術仕様（付録）
+
+For maintenance developers, the model parameters, algorithms, and local setups are compiled below.
+
+### System Pipeline
+```
+ [FRED Macro Data Ingest]             [yfinance Market Ingest]
+            │                                    │
+            ▼                                    ▼
+ [Event Detection Logic]               [Micro Valuation Data]
+  - Deviation from 50d SMA                       │
+  - 30d ROC Volatility Thresholds                │
+            │                                    │
+            ▼                                    │
+ [Rule Engine: Sector Score]                     │
+  - Normalized to [-50.0, +50.0]                 │
+            │                                    │
+            └───────────────► ─── ◄──────────────┘
+                             │
+                             ▼
+                [Stock Evaluator Rating]
+                 - Macro + Valuation score
+                 - Decision: BUY / WATCH / AVOID
+```
+
+### 12 Macro Event Rules & Severity Metrics
+* Rate Spike (long_rate_spike): 10-year yield MoM difference >= +0.25% (Sev 1), >= +0.50% (Sev 2), >= +1.00% (Sev 3).
+* Inflation High (inflation_high): Consumer price index (CPI YoY) >= 2.0% (Sev 1), >= 3.0% (Sev 2), >= 5.0% (Sev 3).
+* GDP Slowdown (gdp_growth_slowing): Real GDP YoY rate <= 1.0% (Sev 1), <= 0.0% (Sev 2), <= -2.0% (Sev 3 / Recession).
+* Yield Curve Inversion (yield_curve_inversion): 10-year yield minus Central Bank policy rate <= 0.0%. Triggers fixed Severity 2.
+
+### Mathematical Model
+Raw_Score_Sector = sum( Base_Weight_Sector_i * Severity_i )
+Macro_Score_Sector = ( Raw_Score_Sector / max(abs(Raw_Scores)) ) * 50.0
+
+Individual stock valuation is scored out of 50 points based on PER (30 pts) and PBR (20 pts), using localized country criteria:
+* Japan (JP): Cheap PER <= 8.0, Cheap PBR <= 0.70.
+* US / Europe: Cheap PER <= 14.0, Cheap PBR <= 1.50.
+* China (CN): Cheap PER <= 10.0, Cheap PBR <= 1.00.
+
+### Database Schema (SQLite: data/macro_cache.db)
+1. users: Stores registered accounts and monitoring flags.
+2. portfolios: Manages real asset tracking and simulated trade structures.
+3. holdings: Holds detailed position logs (quantity, cost basis).
+4. macro_events: Stores historical indicator triggers and severity levels.
+5. portfolio_evaluations: Weighted aggregate macro scores calculated per event.
+6. holding_evaluations: Specific stock decisions and rationales.
+7. notification_settings: Enabled channels, severity filters, Webhook endpoints.
+8. notification_logs: Sent alerts timestamps and channel statuses.
+
+### Setup & Testing
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./.venv/bin/pytest tests/
+```
