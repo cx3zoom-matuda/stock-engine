@@ -4,7 +4,8 @@ import streamlit as st
 st.set_page_config(
     page_title="Readme / G20 Macro Hub",
     page_icon="📖",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="collapsed"
 )
 
 # Hide sidebar completely for clean single column view
@@ -13,9 +14,17 @@ st.markdown("""
         [data-testid="stSidebar"] {
             display: none !important;
         }
-        .reportview-container .main .block-container {
-            max-width: 900px !important;
+        [data-testid="stSidebarCollapsedControl"] {
+            display: none !important;
+        }
+        [data-testid="stAppViewContainer"] {
+            padding-left: 0rem !important;
+        }
+        .main .block-container {
+            max-width: 800px !important;
+            margin: 0 auto !important;
             padding-top: 2rem !important;
+            padding-bottom: 2rem !important;
         }
     </style>
 """, unsafe_allow_html=True)

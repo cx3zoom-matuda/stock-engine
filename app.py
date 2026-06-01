@@ -358,9 +358,17 @@ if page_selection == t("readme_tab"):
             [data-testid="stSidebar"] {
                 display: none !important;
             }
-            .reportview-container .main .block-container {
-                max-width: 900px !important;
+            [data-testid="stSidebarCollapsedControl"] {
+                display: none !important;
+            }
+            [data-testid="stAppViewContainer"] {
+                padding-left: 0rem !important;
+            }
+            .main .block-container {
+                max-width: 800px !important;
+                margin: 0 auto !important;
                 padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
             }
         </style>
     """, unsafe_allow_html=True)
