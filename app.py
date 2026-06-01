@@ -316,6 +316,16 @@ def render_verification_board_ui():
         st.info("No prediction history matches the active filters.")
 
 
+def render_readme_ui():
+    st.subheader(t("readme_tab"))
+    try:
+        with open("README.md", "r", encoding="utf-8") as f:
+            readme_text = f.read()
+        st.markdown(readme_text)
+    except Exception as e:
+        st.error(f"Could not load README.md: {e}")
+
+
 # Sidebar configuration
 st.sidebar.header(t("sidebar_title"))
 
@@ -333,12 +343,16 @@ if new_lang != st.session_state.language:
 # Navigation Page Selector
 page_selection = st.sidebar.radio(
     "🧭 Navigation" if st.session_state.language == "en" else "🧭 ナビゲーション",
-    [t("screener_tab"), t("verification_tab")],
+    [t("screener_tab"), t("verification_tab"), t("readme_tab")],
     key="nav_page"
 )
 
 if page_selection == t("verification_tab"):
     render_verification_board_ui()
+    st.stop()
+
+if page_selection == t("readme_tab"):
+    render_readme_ui()
     st.stop()
 
 # API Keys
