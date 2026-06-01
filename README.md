@@ -1,75 +1,129 @@
-# Macro → Industry Translation Engine (MVP)
+# G20マクロ＆株式スクリーニングハブ 技術仕様書 (README)
 
-A modular Python framework to translate real-time macroeconomic event triggers into ranked impact scores for 17 key industry sectors, strictly matching the specifications in `MEMORY.md` and `MEMORY2.md`.
+本システムは、G20諸国のマクロ経済指標および定性的な景気サイクルを分析し、**17の主要産業セクター**への影響度（マクロスコア）を算出します。さらに、個別企業のバリュエーション指標（PER、PBR）と組み合わせることで、各株式の投資判断を自動的に下すクオンツフレームワークです。
 
-## System Overview
+---
 
-```
-Macro Time-Series
-       ↓ (EventDetector)
-Macro Events with Severities
-       ↓ (RuleEngine + Impact Matrix)
-17 Ranked Industry Scores
-```
+## 1. 全体像・処理フロー (Top-Down Approach)
 
-## Directory Structure
+本システムは、マクロ経済の動向から個別銘柄の評価へ落とし込む**トップダウン・アプローチ**を採用しています。処理フローは以下の4段階のデータパイプラインで構成されています。
 
 ```
-/Users/p/developer/services/translation-engine/
-├── README.md                 # Project documentation
-├── requirements.txt          # Python dependencies (pandas, numpy, pytest)
-├── main.py                   # Demonstration CLI runner with synthetic data
-├── src/
-│   ├── __init__.py
-│   ├── schema.py             # 17 Core sectors, subsector mapping, and impact matrix weights
-│   ├── detector.py           # EventDetector (processes rates, inflation, oil, forex and GDP trends)
-│   └── engine.py             # RuleEngine (aggregates weights * severity and outputs rankings)
-└── tests/
-    ├── __init__.py
-    └── test_translation.py   # Unit tests validating thresholds, severities, and score logic
+[データソース]
+ - FRED (マクロ金利・インフレ・GDP等)
+ - yfinance (株価・PER・PBR・先物等)
+       │
+       ▼
+ 1. Ingestion (データ収集・キャッシュ層)
+       │
+       ▼
+ 2. Event Detector (マクロシグナル検出)
+       │  - 50日移動平均 (SMA)
+       │  - 30日変化率 (ROC)
+       ▼
+ 3. Rule Engine (セクター影響度スコアリング)
+       │  - 静的影響度マトリクス (Static Impact Matrix)
+       │  - 累積加算: Raw_Score = Σ(Base_Weight × Severity)
+       │  - 正規化: [-50.0, +50.0] のマクロスコア
+       ▼
+ 4. Stock Evaluator (国別バリュエーション判定)
+          - PER/PBRのスコアリング (最大50点)
+          - 最終投資判断決定ツリー (BUY / WATCH / AVOID)
 ```
 
-## Core Calculations
+---
 
-1. **Severity Scaling:** Macro trend movements are parsed into three severity levels: `1` (minor), `2` (moderate), and `3` (major) based on progressive change thresholds.
-2. **Subsector Aggregation:** Granular subsectors and industry labels are mapped back onto the 17 core industry taxonomy classes defined in `MEMORY.md`.
-3. **Cumulative Scoring:** Multiple simultaneously active events are aggregated linearly:
-   $$\text{Industry Score} = \sum (\text{Base Impact Weight} \times \text{Severity})$$
-4. **Normalization:** Scores are normalized relative to the maximum absolute score of any sector during that run to scale the results within $[-1, 1]$.
+## 2. マクロシグナル検出ロジック (Event Detector)
 
-## Setup & API Configurations
+インプットされた時間系列データを分析し、現在のアクティブなマクロシグナルとその深刻度（**Severity**: 1=軽微, 2=中程度, 3=重大）を判定します。
 
-### FRED API Key Configuration
-To fetch data using FRED's authenticated JSON API:
-1. Register for a free API key at the Federal Reserve Bank of St. Louis: [FRED API Key Signup](https://fred.stlouisfed.org/api_key.html).
-2. Configure the key using one of the following methods:
-   - **Method A (.env file):** Create a `.env` file in the root of `/Users/p/developer/services/translation-engine/` containing:
-     ```env
-     FRED_API_KEY=your_actual_fred_api_key_here
-     ```
-   - **Method B (Environment Variable):** Export it directly in your shell session:
-     ```bash
-     export FRED_API_KEY="your_actual_fred_api_key_here"
-     ```
+### 主要12マクロイベントの検知ルール
 
-> [!NOTE]
-> **Public Fallback Mode:** If no `FRED_API_KEY` is provided, the data ingestion layer will print a warning and automatically redirect queries to FRED's public CSV export endpoints. This allows the engine to run immediately without requiring manual token registration.
+| シグナル名 (コード) | トリガー条件 | Severity: 1 (軽微) | Severity: 2 (中程度) | Severity: 3 (重大) |
+| :--- | :--- | :--- | :--- | :--- |
+| **長期金利急騰**<br>`long_rate_spike` | 10年債利回りの前月差 | $\ge +0.25\%$ | $\ge +0.50\%$ | $\ge +1.00\%$ |
+| **長期金利急落**<br>`long_rate_drop` | 10年債利回りの前月差 | $\le -0.25\%$ | $\le -0.50\%$ | $\le -1.00\%$ |
+| **政策金利利上げ**<br>`rate_hike` | 政策金利の前月差 | $\ge +0.05\%$ | $\ge +0.25\%$ | $\ge +0.50\%$ |
+| **政策金利利下げ**<br>`rate_cut` | 政策金利の前月差 | $\le -0.05\%$ | $\le -0.25\%$ | $\le -0.50\%$ |
+| **インフレ高進**<br>`inflation_high` | 消費者物価指数 (YoY CPI) | $\ge 2.0\%$ | $\ge 3.0\%$ | $\ge 5.0\%$ |
+| **低インフレ/デフレ**<br>`inflation_low` | 消費者物価指数 (YoY CPI) | $\le 1.5\%$ | $\le 1.0\%$ | $< 0.0\%$ (デフレ) |
+| **GDP成長加速**<br>`gdp_growth_accelerating` | GDP成長率 (YoY) | $\ge 2.5\%$ | $\ge 4.0\%$ | $\ge 6.0\%$ |
+| **GDP成長減速**<br>`gdp_growth_slowing` | GDP成長率 (YoY) | $\le 1.0\%$ | $\le 0.0\%$ | $\le -2.0\%$ (リセッション) |
+| **ビジネス景気拡大**<br>`business_expansion` | PMI $\ge 50$ / 短観 $\ge 100$ | 閾値以上 | $\ge$ 閾値 $\times 1.01$ | $\ge$ 閾値 $\times 1.03$ |
+| **ビジネス景気後退**<br>`business_contraction` | PMI $< 50$ / 短観 $< 100$ | 閾値未満 | $\le$ 閾値 $\times 0.99$ | $\le$ 閾値 $\times 0.97$ |
+| **逆イールド発生**<br>`yield_curve_inversion` | 10年債利回り $-$ 政策金利 $\le 0.0\%$ | - | 固定 Severity: 2 | - |
+| **イールド急傾斜化**<br>`yield_curve_steepening` | 10年債利回り $-$ 政策金利 $\ge 1.5\%$ | - | 固定 Severity: 2 | - |
 
-## How to Run
+> ※ **定量的変化率ルール**: WTI原油、ゴールド、銅、天然ガス、為替レートは30日変化率（ROC）から判定されます（例: 原油が30日間で $+10\% / +20\% / +40\%$ 急騰すると、`oil_price_spike` の Severity 1 / 2 / 3 が発動）。
 
-### Setup Virtual Environment
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+---
+
+## 3. セクター影響度マトリクス (Static Impact Matrix)
+
+シグナルが検出されると、17の主要セクターに対するインパクト値（`-50` 〜 `+50`）が適用されます。
+
+### スコア算出式
+各セクターの未調整スコア（$Raw\_Score$）は、各イベントの基本重み付け（$Base\_Weight$）にそのイベントの深刻度（$Severity$）を掛け合わせたものの累積和として計算されます。
+
+$$\text{Raw\_Score}_{\text{Sector}} = \sum_{i} \left( \text{Base\_Weight}_{\text{Sector}, i} \times \text{Severity}_{i} \right)$$
+
+### 正規化処理 (Normalization)
+計算された Raw Score は、今回の実行で検出された全セクターの中の最大絶対値で割ることで正規化され、**最大 $\pm 50.0$ ポイント**のスケールに変換されます。
+
+$$\text{Macro\_Score}_{\text{Sector}} = \left( \frac{\text{Raw\_Score}_{\text{Sector}}}{\max_{\text{all\_sectors}} | \text{Raw\_Score} |} \right) \times 50.0$$
+
+#### セクター別重み付けの例
+* **`long_rate_spike` (長期金利急騰)**:
+  * 銀行 (`bank`): $+40$ | 保険 (`insurance`): $+30$
+  * 不動産 (`real_estate`): $-40$ | 建設 (`construction`): $-20$
+* **`business_contraction` (不景気)**:
+  * 機械 (`machinery`): $-30$ | 自動車 (`automobile`): $-30$
+  * ディフェンシブセクター (生活必需品・医薬品等): 影響なし (相対的優位)
+
+---
+
+## 4. 国別バリュエーション評価 (Valuation Score)
+
+個別銘柄の財務的な割安性を、**PER（最大30点）** と **PBR（最大20点）** の合計 **50点満点** でスコアリングします。市場ごとの金利環境や商習慣を考慮し、国別に異なる閾値マトリクスが自動適用されます。
+
+### 評価点配分テーブル (PER: 最大30点 / PBR: 最大20点)
+
+| 市場区分 | 評価項目 | 割安 (満点: +30 / +20) | やや割安 (+15 / +10) | 適正水準 (+0 / +0) | 割高 (-15 / -10) | 赤字/負債超過 (-20 / -10) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **日本 (JP)** | **PER** | $\le 8.0$ | $8.0 - 13.0$ | $13.0 - 20.0$ | $> 20.0$ | $\le 0.0$ |
+| | **PBR** | $\le 0.70$ | $0.70 - 1.00$ | $1.00 - 1.80$ | $> 1.80$ | $\le 0.0$ |
+| **中国 (CN)** | **PER** | $\le 10.0$ | $10.0 - 16.0$ | $16.0 - 24.0$ | $> 24.0$ | $\le 0.0$ |
+| | **PBR** | $\le 1.00$ | $1.00 - 1.80$ | $1.80 - 3.20$ | $> 3.20$ | $\le 0.0$ |
+| **米国・欧州等**<br>(US/EZ/GB/CA/AU) | **PER** | $\le 14.0$ | $14.0 - 22.0$ | $22.0 - 30.0$ | $> 30.0$ | $\le 0.0$ |
+| | **PBR** | $\le 1.50$ | $1.50 - 3.00$ | $3.00 - 5.50$ | $> 5.50$ | $\le 0.0$ |
+
+---
+
+## 5. 投資判断決定ツリー (Final Decision Tree)
+
+最後に、セクターマクロスコア（最大 $\pm 50$）とバリュエーションスコア（最大満点 $50$）を合算し、**総合スコア (Combined Score: 最大 $\pm 100$)** を算出します。このスコアを基に、以下の決定木ロジックに従って最終投資判断を下します。
+
+```
+                      [ 総合スコアの算出 ]
+                  (Combined = Macro + Valuation)
+                                │
+         ┌──────────────────────┼──────────────────────┐
+         ▼                      ▼                      ▼
+  【 BUY 判定条件 】     【 AVOID 判定条件 】     【 WATCH 判定 】
+   - Macro ≧ 15.0          - Macro ≦ -20.0          - 左記の条件に
+     (強力な追い風)          (過酷な逆風)             当てはまらない
+         AND                    OR                    中立・監視銘柄
+   - Valuation ≧ 10.0      - Valuation ≦ -25.0
+     (割安・フェア値)         (極めて割高)
+         AND                    OR
+   - PER > 0 (黒字)        - PER ＞ 警戒基準値*
+                                OR
+                           - PER ≦ 0 (赤字企業)
+
+* 警戒基準値: 日本=40.0, 中国=48.0, 米国・欧州=60.0 (これを超えるPERは自動的に AVOID となります)
 ```
 
-### Run Demonstration CLI Script
-```bash
-python main.py
-```
+---
 
-### Run Unit Tests
-```bash
-pytest tests/
-```
+## 6. ライセンス & 免責事項
+本システムは株式投資のスクリーニングを補助するための技術的モデルであり、将来の投資収益を保証するものではありません。実際の投資判断は各個人の自己責任でお願いいたします。
