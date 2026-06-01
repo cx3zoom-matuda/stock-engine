@@ -2,65 +2,222 @@ import streamlit as st
 import pathlib
 
 st.set_page_config(
-    page_title="Macro & Stock Evaluation Engine - Logic & Docs",
-    page_icon="📖",
+    page_title="Obra — The Blueprint & Docs",
+    page_icon="🏛️",
     layout="wide"
 )
 
-# Custom premium styling
+# Custom premium styling matching Obra's aesthetic (Gaudí / Amber / Stone Grid theme)
 st.markdown("""
 <style>
     .reportview-container {
-        background: #0f172a;
+        background: #0a0a08;
     }
     .title-text {
-        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        background: linear-gradient(135deg, #c8a55a, #d4b06a);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-weight: 800;
-        font-size: 2.2rem;
-        margin-bottom: 0.5rem;
+        font-family: 'Cormorant Garamond', serif;
+        font-weight: 300;
+        font-size: 2.5rem;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.2rem;
     }
     .subtitle-text {
-        color: #94a3b8;
-        font-size: 1.1rem;
+        color: #a09888;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85rem;
+        letter-spacing: 0.15em;
         margin-bottom: 2rem;
+        text-transform: uppercase;
     }
-    .logic-header {
-        color: #38bdf8;
-        font-weight: 700;
-        border-bottom: 2px solid #1e293b;
+    .blueprint-section-title {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.8rem;
+        color: #e8e0d0;
+        border-bottom: 1px solid rgba(200, 165, 90, 0.15);
         padding-bottom: 0.5rem;
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
+        margin-top: 2rem;
+        margin-bottom: 1.2rem;
     }
-    .info-card {
-        background-color: #1e293b;
-        border-left: 5px solid #818cf8;
-        padding: 1.2rem;
+    .blueprint-section-title em {
+        font-family: 'Instrument Serif', serif;
+        font-style: italic;
+        color: #c8a55a;
+    }
+    .accent-card {
+        background-color: #141410;
+        border: 1px solid rgba(200, 165, 90, 0.12);
+        border-left: 4px solid #c8a55a;
+        padding: 1.5rem;
         border-radius: 4px;
         margin-bottom: 1.5rem;
     }
-    .table-container {
-        margin: 1rem 0;
+    .manifesto-text {
+        font-family: 'Instrument Serif', serif;
+        font-style: italic;
+        font-size: 1.35rem;
+        line-height: 1.7;
+        color: #a09888;
+    }
+    .law-card {
+        background-color: #141410;
+        border: 1px solid rgba(200, 165, 90, 0.06);
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    .law-num {
+        font-family: 'Cormorant Garamond', serif;
+        font-size: 1.5rem;
+        color: #c8a55a;
+        font-weight: bold;
+        margin-bottom: 0.2rem;
+    }
+    .law-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 500;
+        color: #e8e0d0;
+        margin-bottom: 0.4rem;
+    }
+    .law-desc {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.8rem;
+        color: #a09888;
+    }
+    .link-banner {
+        background: linear-gradient(90deg, rgba(200, 165, 90, 0.15), rgba(20, 20, 16, 0.9));
+        border: 1px solid #c8a55a;
+        padding: 1rem;
+        border-radius: 6px;
+        text-align: center;
+        margin: 2rem 0;
+    }
+    .link-banner a {
+        color: #e8e0d0 !important;
+        font-weight: bold;
+        text-decoration: underline;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="title-text">📊 ドキュメント＆操作マニュアル</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle-text">ツールの具体的な操作方法（保有株CSVの分析など）や、裏側で動作する数理評価アルゴリズムについて解説します。</div>', unsafe_allow_html=True)
+st.markdown('<div class="title-text">🏛️ Obra — The Blueprint</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle-text">Seven AI-Native Tools. One Unified Vision. Office 2.0 for the Age of Intelligence.</div>', unsafe_allow_html=True)
 
-# Tabs to organize information
-tab_howto, tab_overview, tab_events, tab_matrix, tab_valuation, tab_decision = st.tabs([
-    "📖 使い方ガイド (HOWTO)",
-    "🔍 1. 全体像・処理フロー",
-    "🔔 2. マクロシグナル検出ロジック",
-    "🏆 3. セクター影響度マトリクス",
-    "⚖️ 4. 国別バリュエーション評価",
-    "🎯 5. 投資判断決定ツリー"
+# Custom Domain Branding Link
+st.markdown("""
+<div class="link-banner">
+    🚀 <strong>本システムのオフィシャルカスタムドメイン:</strong> 
+    <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> から安全にアクセスいただけます。
+</div>
+""", unsafe_allow_html=True)
+
+# Tabs
+tab_blueprint, tab_howto, tab_logic = st.tabs([
+    "🏛️ 1. Obra Blueprint (設計図)",
+    "📖 2. 使い方ガイド (HOWTO)",
+    "📊 3. クオンツ判定ロジック (Logic)"
 ])
 
-# ----------------- TAB 0: HOWTO GUIDE -----------------
+# ----------------- TAB 1: BLUEPRINT -----------------
+with tab_blueprint:
+    st.markdown('<div class="blueprint-section-title">Introduction — <em>Obra</em></div>', unsafe_allow_html=True)
+    st.markdown("""
+    *From the Spanish — opus, work, masterpiece.*  
+    私たちはソフトウェアの「大聖堂（Cathedral）」を作っています。ただの製品ではありません。ひとつの壮大な帝国です。
+    """)
+
+    st.markdown('<div class="blueprint-section-title">I — The Problem — <em>構造的な破壊</em></div>', unsafe_allow_html=True)
+    st.markdown('<div class="accent-card"><div class="manifesto-text">'
+                'ソフトウェア業界は、構造的に崩壊しています。<br>'
+                '30年間、同じパターンが繰り返されてきました。大企業はツールを作り、あなたのデータを囲い込み、'
+                'あなた自身の成果物にアクセスするためだけに毎月のサブスクリプションを請求し、それを「イノベーション」と呼びます。'
+                '</div></div>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    * **サブスク疲れ (Subscription fatigue)**: あなたは自分自身のものにならないソフトウェアに対し、永遠にお金を払い続けます。支払いを止めた瞬間に、あなたのワークフローは死にます。
+    * **クラウドへのロックイン (Cloud lock-in)**: あなたのデータは他人のサーバーに存在します。あなたはそのデータを所有していません。ただアクセス権をレンタルしているだけです。
+    * **奪われたデータ主権 (Data sovereignty, surrendered)**: すべてのキーストローク、すべてのクエリ、すべての思考が、設計段階から他社に収集され、分析され、マネタイズされています。
+    * **中央集権化されたAI (AI, centralized)**: 巨大企業がAIモデルを所有し、アクセスを制御し、条件を設定します。あなたは彼らの「知性」の中のただのテナント（店借人）に過ぎません。
+    """)
+
+    st.markdown('<div class="blueprint-section-title">II — Four Laws — <em>4つの非交渉的鉄則</em></div>', unsafe_allow_html=True)
+    
+    # 4 Laws grid
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div class="law-card">
+            <div class="law-num">I</div>
+            <div class="law-title">Data stays with the user.</div>
+            <div class="law-desc">ローカルファースト。あなたのPC、あなたのファイル、あなたの主権。</div>
+        </div>
+        <div class="law-card">
+            <div class="law-num">II</div>
+            <div class="law-title">Formats are open.</div>
+            <div class="law-desc">ベンダーロックインの完全な排除。公開仕様書により、いつでもシステムから離脱可能。</div>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="law-card">
+            <div class="law-num">III</div>
+            <div class="law-title">Buy once. Own forever.</div>
+            <div class="law-desc">サブスクの対極。3年間の製品保証 ＋ 永続無料アップデート。</div>
+        </div>
+        <div class="law-card">
+            <div class="law-num">IV</div>
+            <div class="law-title">AI is not owned — you bring your own.</div>
+            <div class="law-desc">あなたのLLM。あなたの選択。ローカルでもクラウドでも、あなたの好きな利用規約で。</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown('<div class="blueprint-section-title">III — Three Phases — <em>3つのロードマップ</em></div>', unsafe_allow_html=True)
+    st.markdown("""
+    * **Phase 1: Office 2.0 (The Software Suite) [開発中]**
+      * クラウド生産性スタックに置き換わる7つのAIネイティブツール。
+    * **Phase 2: Enterprise (Oracle 2.0) [計画中]**
+      * 企業のインフラ基盤を再構築するセキュリティ・システム。
+    * **Phase 3: Hardware (Apple 2.0) [構想]**
+      * 垂直統合の実現。OSから独自のハードウェアデバイスを自社保有。
+    """)
+
+    st.markdown('<div class="blueprint-section-title">IV — Seven Tools — <em>7つのエコシステム</em></div>', unsafe_allow_html=True)
+    
+    # Showcase 7 Tools
+    t_cols = st.columns(2)
+    with t_cols[0]:
+        st.write("📁 **DaviCore (The Hub)**")
+        st.caption("LLMアグリゲーター。中央ベクトルデータベース。ローカル監査エンジン。データを囲い込むことなくすべてを接続する、システムの核となる脳。")
+        
+        st.write("🎥 **EZRA (The Output)**")
+        st.caption("動画・ナレーション生成エンジン。GPU独立設計。独自のSaaSとして、あるいはローカルマシンで動作可能。")
+        
+        st.write("🎨 **Ezora (The Input)**")
+        st.caption("思考のキャンバスから完成文書へ。手書きのアイデアを、AIが他人に提出できるレベルの洗練されたPDFやスライドに変換。")
+        
+        st.write("🧠 **Elix (The Cognitive OS)**")
+        st.caption("思考の可視化キャンバス。あなたが気づかなかったデータやインサイトのパターンを抽出し、潜在的な関心を浮き彫りにする。")
+    
+    with t_cols[1]:
+        st.write("🪨 **Lithex (The Knowledge Base)**")
+        st.caption("スクラップとメモの蓄積。キャプチャしたすべての情報が接続された知識体系となり、自動タグ付けと検索を可能にする。")
+        
+        st.write("⏳ **Viox (The Execution)**")
+        st.caption("バイオ同期タスク管理。あなたのスケジュールをあなたの身体（エネルギー、集中力、体内リズム）に自動で適合させる。")
+        
+        st.write("⚖️ **RegLex (The Regulation)**")
+        st.caption("規制および行政処理プロセスの自動化。あなたに代わって複雑な官僚主義的手続きをナビゲートする。")
+
+    st.markdown('<div class="blueprint-section-title">V — The Builder — <em>指揮官とエージェント</em></div>', unsafe_allow_html=True)
+    st.markdown("""
+    * **一人の指揮官とAIエージェントの軍隊**:
+      * 開発者は一般的なエンジニアではありません。ソフトウェアのあるべき姿を追求し、大企業の逆を行く現状を見続けてきた「30年のテクノロジーリーダーシップ経験を持つ元CIO」。
+      * コードを自ら一行ずつ書くのではなく、一人の人間のビジョンの下、並行して自律動作する「4つのAIエージェントシステム」をオーケストレーション（指揮・統率）して構築されています。
+      * **バルセロナから**: ガウディの街。大聖堂が、その創作者たちよりも長生きするように設計される場所から、このソフトウェアは生まれました。
+    """)
+
+# ----------------- TAB 2: HOWTO GUIDE -----------------
 with tab_howto:
     st.markdown('<h3 class="logic-header">保有ポートフォリオ診断 ＆ ツール操作手順</h3>', unsafe_allow_html=True)
     current_dir = pathlib.Path(__file__).parent.parent
@@ -68,13 +225,12 @@ with tab_howto:
     if howto_path.exists():
         with open(howto_path, "r", encoding="utf-8") as f:
             howto_content = f.read()
-        # Display the HOWTO.md content
         st.markdown(howto_content)
     else:
         st.error("使い方ガイド（HOWTO.md）ファイルが見つかりません。")
 
-# ----------------- TAB 1: OVERVIEW -----------------
-with tab_overview:
+# ----------------- TAB 3: QUANT LOGIC -----------------
+with tab_logic:
     st.markdown('<h3 class="logic-header">システムアーキテクチャ & パイプライン</h3>', unsafe_allow_html=True)
     st.write(
         "本システムは、リアルタイムのマクロ時系列データ（経済環境）と個別銘柄の財務指標（ミクロデータ）を融合させて投資判断を導き出す、**「トップダウン・アプローチ」**を採用したクオンツ評価エンジンです。"
@@ -110,14 +266,7 @@ with tab_overview:
     st.markdown("              [投資判断 (BUY / WATCH / AVOID)]")
     st.markdown("```")
 
-# ----------------- TAB 2: EVENTS -----------------
-with tab_events:
     st.markdown('<h3 class="logic-header">12のマクロイベント検出ロジック</h3>', unsafe_allow_html=True)
-    st.write(
-        "システムは、インプットされた時系列データを元に、以下のルールを用いてマクロ経済の「シグナル」を検出します。"
-        "各イベントには、その大きさに応じて **Severity（深刻度/重要度: 1=軽微, 2=中等度, 3=重大）** が割り当てられます。"
-    )
-
     st.markdown("""
     | 検出シグナル名 | 検出ロジック・閾値の計算 | Severity (重要度) の判定基準 |
     | :--- | :--- | :--- |
@@ -135,128 +284,20 @@ with tab_events:
     | **逆イールド (YIELD_CURVE_INVERSION)** | 10年国債利回り － 政策金利 ≦ 0% （イールドカーブ逆転） | 逆イールド検出時に一律 **Severity 2** （景気後退の強力な先行指標） |
     """)
 
-# ----------------- TAB 3: MATRIX -----------------
-with tab_matrix:
-    st.markdown('<h3 class="logic-header">産業別インパクトマトリクスと累積スコア計算</h3>', unsafe_allow_html=True)
-    st.write(
-        "検出されたマクロイベントが、各産業セクターにどのような影響を与えるかは、**「インパクトマトリクス (Impact Matrix)」**という係数テーブルによって定義されています。"
-        "影響度は **-50 (深刻な逆風)** から **+50 (強力な追い風)** までの範囲で設定されています。"
-    )
-
-    st.markdown("""
-    #### 累積影響度スコアの数式
-    検出された複数のマクロイベントによる累積スコアは、各マクロイベントの「基本加重値」に「検出された重要度（Severity）」を掛け合わせて線形加算します。
-    """)
-    
+    st.markdown('<h3 class="logic-header">計算ロジックとバリュエーション評価</h3>', unsafe_allow_html=True)
     st.latex(r"Raw\_Score_{Sector} = \sum_{Event} \left( Base\_Weight_{Event, Sector} \times Severity_{Event} \right)")
-    
-    st.markdown("""
-    #### 正規化処理
-    セクター間の比較を容易にするため、算出された累積スコアを最大絶対値で割り、**[-1.0, 1.0]** の範囲にスケールします。
-    """)
     st.latex(r"Normalized\_Score_{Sector} = \frac{Raw\_Score_{Sector}}{\max \left( |Raw\_Score_{All\_Sectors}|, 1.0 \right)}")
 
-    st.write("**主要イベントとセクター加重値の対応例（抜粋）:**")
     st.markdown("""
-    * **金利上昇 (RATE_RISING)**: 銀行（`+30〜+40`）, 保険（`+20〜+30`）は収益改善のため**追い風**。一方、不動産（`-30〜-40`）, 建設（`-20`）は資金調達コスト増と住宅ローン抑制のため**大逆風**。
-    * **インフレ加速 (INFLATION_ACCELERATING)**: エネルギー（`+40`）, 素材/鉱業（`+30`）は資源価格上昇で**追い風**。小売/食品（`-20〜-30`）は仕入コスト上昇を価格転嫁しづらいため**逆風**。
-    * **自国通貨安 (YEN_DEPRECIATING等)**: 輸出産業である自動車（`+40`）, 電機・半導体（`+40`）, 機械（`+30`）は**追い風**。輸入コストが増加する小売（`-20`）, 空運（`-20`）は**逆風**。
-    * **AI投資ブーム (AI_INVESTMENT_BOOM)**: 半導体（`+50`）, データセンター/通信（`+40`）, 電源装置/電子部品（`+30`）に**極めて強い追い風**。
+    #### 国別バリュエーション（PER / PBR）の評価基準 (日本 vs 米国/欧州 vs 中国)
+    * **日本 (JP) 基準**: PER ≦ 8.0 (+30点) / ≦ 13.0 (+15点) / ≦ 20.0 (0点) / ＞ 20.0 (-15点). PBR ≦ 0.7 (+20点) / ≦ 1.0 (+10点) / ≦ 1.8 (0点).
+    * **米国 (US) 基準**: PER ≦ 14.0 (+30点) / ≦ 22.0 (+15点) / ≦ 30.0 (0点) / ＞ 30.0 (-15点). PBR ≦ 1.5 (+20点) / ≦ 3.0 (+10点) / ≦ 5.5 (0点).
+    * **中国 (CN) 基準**: PER ≦ 10.0 (+30点) / ≦ 16.0 (+15点) / ≦ 24.0 (0点) / ＞ 24.0 (-15点). PBR ≦ 1.0 (+20点) / ≦ 1.8 (+10点) / ≦ 3.2 (0点).
     """)
 
-# ----------------- TAB 4: VALUATION -----------------
-with tab_valuation:
-    st.markdown('<h3 class="logic-header">国別バリュエーション（割安度）のスコアリング</h3>', unsafe_allow_html=True)
-    st.write(
-        "どれだけマクロ環境が良くても、株価が割高すぎる局面での投資はリスクを伴います。"
-        "そこで個別銘柄の **PER (株価収益率)** と **PBR (純資産倍率)** を元に、バリュエーションスコア（最大 50点満点）を算出します。"
-    )
-    st.write(
-        "国（市場）によって平均的なバリュエーション水準が異なるため、システムは**日本(JP)、米国(US/EU)、中国(CN)**それぞれに最適化された閾値テーブルを使い分けています。"
-    )
-
-    st.markdown('<div class="info-card"><strong>💡 スコア計算式:</strong><br>バリュエーションスコア（最大50点） ＝ PER評価点（最大30点） ＋ PBR評価点（最大20点）</div>', unsafe_allow_html=True)
-
-    # Tables showing thresholds
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("**PER（株価収益率）の評価基準 (点数配分)**")
-        st.markdown("""
-        | 区分 | 日本 (JP) | 米国・欧州 (US/EZ) | 中国 (CN) | 評価点 |
-        | :--- | :--- | :--- | :--- | :---: |
-        | **極めて割安** | 8.0 倍 以下 | 14.0 倍 以下 | 10.0 倍 以下 | **+30 点** |
-        | **割安** | 8.0 〜 13.0 倍 | 14.0 〜 22.0 倍 | 10.0 〜 16.0 倍 | **+15 点** |
-        | **適正水準** | 13.0 〜 20.0 倍 | 22.0 〜 30.0 倍 | 16.0 〜 24.0 倍 | **0 点** |
-        | **割高** | 20.0 倍 超 | 30.0 倍 超 | 24.0 倍 超 | **-15 点** |
-        | **赤字 / 異常値** | 0 倍 以下 | 0 倍 以下 | 0 倍 以下 | **-20 点** |
-        """)
-        
-    with col2:
-        st.write("**PBR（純資産倍率）の評価基準 (点数配分)**")
-        st.markdown("""
-        | 区分 | 日本 (JP) | 米国・欧州 (US/EZ) | 中国 (CN) | 評価点 |
-        | :--- | :--- | :--- | :--- | :---: |
-        | **極めて割安** | 0.7 倍 以下 | 1.5 倍 以下 | 1.0 倍 以下 | **+20 点** |
-        | **割安** | 0.7 〜 1.0 倍 | 1.5 〜 3.0 倍 | 1.0 〜 1.8 倍 | **+10 点** |
-        | **適正水準** | 1.0 〜 1.8 倍 | 3.0 〜 5.5 倍 | 1.8 〜 3.2 倍 | **0 点** |
-        | **割高** | 1.8 倍 超 | 5.5 倍 超 | 3.2 倍 超 | **-10 点** |
-        | **債務超過** | 0 倍 以下 | 0 倍 以下 | 0 倍 以下 | **-10 点** |
-        """)
-
-# ----------------- TAB 5: DECISION -----------------
-with tab_decision:
-    st.markdown('<h3 class="logic-header">総合意思決定ルール（デシジョンツリー）</h3>', unsafe_allow_html=True)
-    st.write(
-        "最終的な投資判断（**BUY: 買い推奨**, **WATCH: 監視**, **AVOID: 回避**）は、"
-        "セクターのマクロ影響度スコアと、個別銘柄のバリュエーションスコアを統合した総合スコア、および「絶対除外ルール」に基づいて決定されます。"
-    )
-
     st.markdown("""
-    ### 投資判断の振り分け条件
-    """)
-
-    c_buy, c_watch, c_avoid = st.columns(3)
-    
-    with c_buy:
-        st.success("🟢 **BUY (買い推奨)**")
-        st.markdown("""
-        次の条件を**すべて**満たす銘柄：
-        1. **マクロ影響度スコア** が **+15 以上**  
-           (業界に強い追い風が吹いている)
-        2. **バリュエーションスコア** が **+10 以上**  
-           (割安または適正な水準にある)
-        3. **赤字ではない** (PER > 0)
-        """)
-        
-    with c_avoid:
-        st.error("🔴 **AVOID (回避推奨)**")
-        st.markdown("""
-        次の条件の**いずれか一つでも**満たす銘柄：
-        1. **マクロ影響度スコア** が **-20 以下**  
-           (業界に重大な逆風リスクがある)
-        2. **バリュエーションスコア** が **-25 以下**  
-           (株価が極めて割高で割に合わない)
-        3. **過剰な高PER**  
-           (日本: PER > 40, 中国: PER > 48, 米国/欧州: PER > 60)
-        4. **赤字または債務超過** (PER ≦ 0 または PBR ≦ 0)
-        """)
-
-    with c_watch:
-        st.warning("🟡 **WATCH (様子見・監視)**")
-        st.markdown("""
-        上記の **BUY** および **AVOID** のいずれの条件にも該当しない銘柄。
-        * 例: マクロの追い風はあるが株価がやや高水準にある銘柄。
-        * 例: 非常に割安だが、マクロイベントによる後押しがまだ弱い銘柄。
-        
-        *※株価調整やマクロ指標の好転を待つ「ウォッチリスト」へ分類されます。*
-        """)
-
-    st.markdown("---")
-    st.markdown("""
-    ### 🚀 本ツールの強み
-    単に「割安な株」や「トレンドが良い株」を買うのではなく、
-    1. **「追い風が吹いている業界（マクロ）」**
-    2. **「実態価値に対して割安な株（バリュエーション）」**
-    
-    この2つが**ピタリと合致した瞬間のみを `BUY` と判定する**ため、トレンドの転換点やバリュートラップ（安物買いの失速）を回避しやすい極めて厳格なクオンツ判定ロジックになっています。
+    #### 投資判断ルール
+    * **BUY**: マクロ影響度スコア ≧ 15 かつ バリュエーションスコア ≧ 10 (かつ PER > 0)
+    * **AVOID**: マクロ影響度スコア ≦ -20、または バリュエーションスコア ≦ -25、または 赤字、または 各国の過剰高PER値（日40 / 中48 / 米60超）
+    * **WATCH**: 上記に当てはまらない中立・監視銘柄
     """)
