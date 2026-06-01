@@ -352,6 +352,24 @@ if page_selection == t("verification_tab"):
     st.stop()
 
 if page_selection == t("readme_tab"):
+    # Inject CSS to hide sidebar completely and center the content
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {
+                display: none !important;
+            }
+            .reportview-container .main .block-container {
+                max-width: 900px !important;
+                padding-top: 2rem !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    # Simple navigation header at the top
+    if st.button("◀ Back to Screener Hub / スクリーナーに戻る", use_container_width=True):
+        st.session_state.nav_page = t("screener_tab")
+        st.rerun()
+        
     render_readme_ui()
     st.stop()
 
