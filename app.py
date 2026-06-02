@@ -27,23 +27,29 @@ if "user" not in st.session_state:
 if "language" not in st.session_state:
     st.session_state.language = "en"
 
-# Initialize page navigation from query parameters if present
+# Initialize tab and page navigation from query parameters if present
+if "active_tab" not in st.session_state:
+    st.session_state.active_tab = "screener"
+
 if "page" in st.query_params:
     page_param = st.query_params["page"].lower()
-    route_map = {
-        "screener": t("screener_tab"),
-        "portfolio": t("portfolios_tab"),
-        "vault": t("portfolios_tab"),
-        "timeline": t("timeline_tab"),
-        "alerts": t("alerts_tab"),
-        "verification": t("verification_tab"),
-        "contact": t("contact_tab"),
-        "readme": t("readme_tab"),
-        "docs": t("readme_tab"),
-    }
-    target_page = route_map.get(page_param)
-    if target_page and ("nav_page" not in st.session_state or st.session_state.nav_page != target_page):
-        st.session_state.nav_page = target_page
+    if page_param in ["readme", "docs", "blueprint"]:
+        st.session_state.active_tab = "docs"
+    elif page_param == "contact":
+        st.session_state.active_tab = "contact"
+    else:
+        st.session_state.active_tab = "screener"
+        route_map = {
+            "screener": t("screener_tab"),
+            "portfolio": t("portfolios_tab"),
+            "vault": t("portfolios_tab"),
+            "timeline": t("timeline_tab"),
+            "alerts": t("alerts_tab"),
+            "verification": t("verification_tab"),
+        }
+        target_page = route_map.get(page_param)
+        if target_page and ("nav_page" not in st.session_state or st.session_state.nav_page != target_page):
+            st.session_state.nav_page = target_page
 
 # Set page config with premium dashboard settings
 st.set_page_config(
@@ -85,6 +91,67 @@ if not default_api_key:
             default_api_key = st.secrets["api"]["fred_api_key"]
     except Exception:
         pass
+
+# Custom styling for premium gold-accented navigation bar (帯)
+st.markdown("""
+<style>
+    .premium-nav-band {
+        background-color: #141410;
+        border: 1px solid rgba(200, 165, 90, 0.25);
+        border-radius: 8px;
+        padding: 8px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    div[data-testid="stColumn"] button {
+        border-radius: 4px !important;
+        font-weight: bold !important;
+        letter-spacing: 0.05em !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+with st.container():
+    # Top navigation layout
+    cols_nav = st.columns([1, 3, 3, 3, 1])
+    is_jp = (st.session_state.language == "jp")
+    
+    with cols_nav[1]:
+        is_active = (st.session_state.active_tab == "screener")
+        btn_label = "🚀 実行環境 (Screener Hub)" if is_jp else "🚀 Screener Hub"
+        if st.button(
+            btn_label, 
+            key="btn_nav_screener", 
+            use_container_width=True, 
+            type="primary" if is_active else "secondary"
+        ):
+            st.session_state.active_tab = "screener"
+            st.session_state.nav_page = t("screener_tab")
+            st.rerun()
+            
+    with cols_nav[2]:
+        is_active = (st.session_state.active_tab == "docs")
+        btn_label = "🏛️ 設計図・仕様書 (Specs)" if is_jp else "🏛️ Obra Specs & Docs"
+        if st.button(
+            btn_label, 
+            key="btn_nav_docs", 
+            use_container_width=True, 
+            type="primary" if is_active else "secondary"
+        ):
+            st.session_state.active_tab = "docs"
+            st.rerun()
+            
+    with cols_nav[3]:
+        is_active = (st.session_state.active_tab == "contact")
+        btn_label = "✉️ お問い合わせ (Contact)" if is_jp else "✉️ Contact Support"
+        if st.button(
+            btn_label, 
+            key="btn_nav_contact", 
+            use_container_width=True, 
+            type="primary" if is_active else "secondary"
+        ):
+            st.session_state.active_tab = "contact"
+            st.rerun()
 
 # Application Header
 st.title(t("app_title"))
@@ -368,6 +435,60 @@ def render_readme_ui():
             margin-bottom: 2rem;
             text-transform: uppercase;
         }
+        .blueprint-section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            color: #e8e0d0;
+            border-bottom: 1px solid rgba(200, 165, 90, 0.15);
+            padding-bottom: 0.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1.2rem;
+        }
+        .blueprint-section-title em {
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            color: #c8a55a;
+        }
+        .accent-card {
+            background-color: #141410;
+            border: 1px solid rgba(200, 165, 90, 0.12);
+            border-left: 4px solid #c8a55a;
+            padding: 1.5rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+        .manifesto-text {
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+            font-size: 1.35rem;
+            line-height: 1.7;
+            color: #a09888;
+        }
+        .law-card {
+            background-color: #141410;
+            border: 1px solid rgba(200, 165, 90, 0.06);
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .law-num {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            color: #c8a55a;
+            font-weight: bold;
+            margin-bottom: 0.2rem;
+        }
+        .law-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            color: #e8e0d0;
+            margin-bottom: 0.4rem;
+        }
+        .law-desc {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #a09888;
+        }
         .link-banner {
             background: linear-gradient(90deg, rgba(200, 165, 90, 0.15), rgba(20, 20, 16, 0.9));
             border: 1px solid #c8a55a;
@@ -393,30 +514,131 @@ def render_readme_ui():
     </style>
     """, unsafe_allow_html=True)
     
-    st.markdown('<div class="title-text">📊 G20 Macro & Stock Screener Hub</div>', unsafe_allow_html=True)
+    st.markdown('<div class="title-text">🏛️ Obra — The Blueprint & Docs</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtitle-text">Technical Specifications, User Manual & Mathematical Logic</div>', unsafe_allow_html=True)
 
     # Custom Domain Branding Link
     if is_jp:
         st.markdown("""
         <div class="link-banner">
-            🚀 <strong>本システムのオフィシャルカスタムドメイン:</strong> 
-            <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> から安全にアクセスいただけます。
+            🚀 <strong>本システムのオフィシャルドメイン:</strong> 
+            <a href="https://macro.ezora.net" target="_blank">macro.ezora.net</a> から安全にアクセスいただけます。
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown("""
         <div class="link-banner">
-            🚀 <strong>Official Custom Domain for this System:</strong> 
-            <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> - Secure access from anywhere.
+            🚀 <strong>Official Domain for this System:</strong> 
+            <a href="https://macro.ezora.net" target="_blank">macro.ezora.net</a> - Secure access.
         </div>
         """, unsafe_allow_html=True)
 
-    tab_howto, tab_logic = st.tabs([
-        "📖 1. 使い方ガイド (HOWTO)" if is_jp else "📖 1. User Guide (HOWTO)",
-        "📊 2. クオンツ判定ロジック (Logic)" if is_jp else "📊 2. Quantitative Logic (Logic)"
+    # Tabs
+    tab_blueprint, tab_howto, tab_logic = st.tabs([
+        "🏛️ 1. Obra Blueprint (設計図)" if is_jp else "🏛️ 1. Obra Blueprint",
+        "📖 2. 使い方ガイド (HOWTO)" if is_jp else "📖 2. User Guide (HOWTO)",
+        "📊 3. クオンツ判定ロジック (Logic)" if is_jp else "📊 3. Quantitative Logic (Logic)"
     ])
 
+    # ----------------- TAB 1: BLUEPRINT -----------------
+    with tab_blueprint:
+        st.markdown('<div class="blueprint-section-title">Introduction — <em>Obra</em></div>', unsafe_allow_html=True)
+        st.markdown("""
+        *From the Spanish — opus, work, masterpiece.*  
+        私たちはソフトウェアの「大聖堂（Cathedral）」を作っています。ただの製品ではありません。ひとつの壮大な帝国です。
+        """)
+
+        st.markdown('<div class="blueprint-section-title">I — The Problem — <em>構造的な破壊</em></div>', unsafe_allow_html=True)
+        st.markdown('<div class="accent-card"><div class="manifesto-text">'
+                    'ソフトウェア業界は、構造的に崩壊しています。<br>'
+                    '30年間、同じパターンが繰り返されてきました。大企業はツールを作り、あなたのデータを囲い込み、'
+                    'あなた自身の成果物にアクセスするためだけに毎月のサブスクリプションを請求し、それを「イノベーション」と呼びます。'
+                    '</div></div>', unsafe_allow_html=True)
+        
+        st.markdown("""
+        * **サブスク疲れ (Subscription fatigue)**: あなたは自分自身のものにならないソフトウェアに対し、永遠にお金を払い続けます。支払いを止めた瞬間に、あなたのワークフローは死にます。
+        * **クラウドへのロックイン (Cloud lock-in)**: あなたのデータは他人のサーバーに存在します。あなたはそのデータを所有していません。ただアクセス権をレンタルしているだけです。
+        * **奪われたデータ主権 (Data sovereignty, surrendered)**: すべてのキーストローク、すべてのクエリ、すべての思考が、設計段階から他社に収集され、分析され、マネタイズされています。
+        * **中央集権化されたAI (AI, centralized)**: 巨大企業がAIモデルを所有し、アクセスを制御し、条件を設定します。あなたは彼らの「知性」の中のただのテナント（店借人）に過ぎません。
+        """)
+
+        st.markdown('<div class="blueprint-section-title">II — Four Laws — <em>4つの非交渉的鉄則</em></div>', unsafe_allow_html=True)
+        
+        # 4 Laws grid
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            <div class="law-card">
+                <div class="law-num">I</div>
+                <div class="law-title">Data stays with the user.</div>
+                <div class="law-desc">ローカルファースト。あなたのPC、あなたのファイル、あなたの主権。</div>
+            </div>
+            <div class="law-card">
+                <div class="law-num">II</div>
+                <div class="law-title">Formats are open.</div>
+                <div class="law-desc">ベンダーロックインの完全な排除。公開仕様書により、いつでもシステムから離脱可能。</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown("""
+            <div class="law-card">
+                <div class="law-num">III</div>
+                <div class="law-title">Buy once. Own forever.</div>
+                <div class="law-desc">サブスクの対極。3年間の製品保証 ＋ 永続無料アップデート。</div>
+            </div>
+            <div class="law-card">
+                <div class="law-num">IV</div>
+                <div class="law-title">AI is not owned — you bring your own.</div>
+                <div class="law-desc">あなたのLLM。あなたの選択。ローカルでもクラウドでも、あなたの好きな利用規約で。</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('<div class="blueprint-section-title">III — Three Phases — <em>3つのロードマップ</em></div>', unsafe_allow_html=True)
+        st.markdown("""
+        * **Phase 1: Office 2.0 (The Software Suite) [開発中]**
+          * クラウド生産性スタックに置き換わる7つのAIネイティブツール。
+        * **Phase 2: Enterprise (Oracle 2.0) [計画中]**
+          * 企業のインフラ基盤を再構築するセキュリティ・システム。
+        * **Phase 3: Hardware (Apple 2.0) [構想]**
+          * 垂直統合の実現。OSから独自のハードウェアデバイスを自社保有。
+        """)
+
+        st.markdown('<div class="blueprint-section-title">IV — Seven Tools — <em>7つのエコシステム</em></div>', unsafe_allow_html=True)
+        
+        # Showcase 7 Tools
+        t_cols = st.columns(2)
+        with t_cols[0]:
+            st.write("📁 **DaviCore (The Hub)**")
+            st.caption("LLMアグリゲーター。中央ベクトルデータベース。ローカル監査エンジン。データを囲い込むことなくすべてを接続する、システムの核となる脳。")
+            
+            st.write("🎥 **EZRA (The Output)**")
+            st.caption("動画・ナレーション生成エンジン。GPU独立設計。独自のSaaSとして、あるいはローカルマシンで動作可能。")
+            
+            st.write("🎨 **Ezora (The Input)**")
+            st.caption("思考のキャンバスから完成文書へ。手書きのアイデアを、AIが他人に提出できるレベルの洗練されたPDFやスライドに変換。")
+            
+            st.write("🧠 **Elix (The Cognitive OS)**")
+            st.caption("思考の可視化キャンバス。あなたが気づかなかったデータやインサイトのパターンを抽出し、潜在的な関心を浮き彫りにする。")
+        
+        with t_cols[1]:
+            st.write("🪨 **Lithex (The Knowledge Base)**")
+            st.caption("スクラップとメモの蓄積。キャプチャしたすべての情報が接続された知識体系となり、自動タグ付けと検索を可能にする。")
+            
+            st.write("⏳ **Viox (The Execution)**")
+            st.caption("バイオ同期タスク管理。あなたのスケジュールをあなたの身体（エネルギー、集中力、体内リズム）に自動で適合させる。")
+            
+            st.write("⚖️ **RegLex (The Regulation)**")
+            st.caption("規制および行政処理プロセスの自動化。あなたに代わって複雑な官僚主義的手続きをナビゲートする。")
+
+        st.markdown('<div class="blueprint-section-title">V — The Builder — <em>指揮官とエージェント</em></div>', unsafe_allow_html=True)
+        st.markdown("""
+        * **一人の指揮官とAIエージェントの軍隊**:
+          * 開発者は一般的なエンジニアではありません。ソフトウェアのあるべき姿を追求し、大企業の逆を行く現状を見続けてきた「30年のテクノロジーリーダーシップ経験を持つ元CIO」。
+          * コードを自ら一行ずつ書くのではなく、一人の人間のビジョンの下、並行して自律動作する「4つのAIエージェントシステム」をオーケストレーション（指揮・統率）して構築されています。
+          * **バルセロナから**: ガウディの街。大聖堂が、その創作者たちよりも長生きするように設計される場所から、このソフトウェアは生まれました。
+        """)
+
+    # ----------------- TAB 2: HOWTO GUIDE -----------------
     with tab_howto:
         if is_jp:
             st.markdown('<h3 class="logic-header">保有ポートフォリオ診断 ＆ ツール操作手順</h3>', unsafe_allow_html=True)
@@ -434,6 +656,7 @@ def render_readme_ui():
         else:
             st.error(f"Required guide file ({howto_file}) not found.")
 
+    # ----------------- TAB 3: QUANT LOGIC -----------------
     with tab_logic:
         if is_jp:
             st.markdown('<h3 class="logic-header">システムアーキテクチャ & パイプライン</h3>', unsafe_allow_html=True)
@@ -441,7 +664,7 @@ def render_readme_ui():
                 "本システムは、リアルタイムのマクロ時系列データ（経済環境）と個別銘柄の財務指標（ミクロデータ）を融合させて投資判断を導き出す、「トップダウン・アプローチ」を採用したクオンツ評価エンジンです。"
             )
             st.info("""
-            **🔄 処理パイプライン of 4つのステップ:**
+            **🔄 処理パイプラインの4つのステップ:**
             1. **データ取得 (Data Ingestion)**: FRED APIおよびyfinanceからマクロ時系列データと個別財務データを取得・クレンジング。
             2. **シグナル検出 (Event Detector)**: 移動平均線（SMA）や前月比、30日変化率を用いて、現在のマクロ指標から12種のエコノミックイベントを検出し、その深刻度（Severity）を決定。
             3. **セクタースコアリング (Rule Engine)**: 検出されたイベントを、静的な「産業別インパクトマトリクス」へ通し、17セクターに対する累積影響度スコアを算出・正規化。
@@ -507,7 +730,7 @@ def render_readme_ui():
             st.markdown("""
             | 検出シグナル名 | 検出ロジック・閾値の計算 | Severity (重要度) の判定基準 |
             | :--- | :--- | :--- |
-            | **金利上昇 (RATE_RISING)** | 10年国債利回りが50日単純移動平均(SMA)を上回っている状態 | 利回りと50日SMA of 乖離幅に応じて **1 〜 3** |
+            | **金利上昇 (RATE_RISING)** | 10年国債利回りが50日単純移動平均(SMA)を上回っている状態 | 利回りと50日SMAの乖離幅に応じて **1 〜 3** |
             | **金利下落 (RATE_FALLING)** | 10年国債利回りが50日SMAを下回っている状態 | 50日SMAと利回りの乖離幅に応じて **1 〜 3** |
             | **高金利環境 (HIGH_RATE_ENVIRONMENT)** | 10年債利回りが長期警戒閾値（4.5%）を突破しているか | 利回りそのものの絶対値に応じて決定 |
             | **インフレ加速 (INFLATION_ACCELERATING)** | 前年比(YoY)消費者物価指数(CPI)が上昇、または前月比(MoM)年率換算で 4.0% 以上 | YoYインフレ率が 3%以上で **Severity 2**, 5%以上で **Severity 3** |
@@ -554,8 +777,8 @@ def render_readme_ui():
             st.markdown("""
             #### 投資判断ルール
             * **BUY**: マクロ影響度スコア ≧ 15 かつ バリュエーションスコア ≧ 10 (かつ PER > 0)
-            * **AVOID**: マクロ影響度スコア ≦ -15 または バリュエーションスコア ≦ -10 または PER ≦ 0
-            * **WATCH**: 上記以外のすべて
+            * **AVOID**: マクロ影響度スコア ≦ -20、または バリュエーションスコア ≦ -25、または 赤字、または 各国の過剰高PER値（日40 / 中48 / 米60超）
+            * **WATCH**: 上記に当てはまらない中立・監視銘柄
             """)
         else:
             st.markdown('<h3 class="logic-header">Scoring Formulation & Valuation Metrics</h3>', unsafe_allow_html=True)
@@ -572,7 +795,7 @@ def render_readme_ui():
             st.markdown("""
             #### Final Investment Recommendation Matrix
             * **BUY**: Macro alignment score >= 15 AND Valuation score >= 10 (and PER > 0)
-            * **AVOID**: Macro alignment score <= -15 OR Valuation score <= -10 OR PER <= 0
+            * **AVOID**: Macro score <= -20 OR Valuation score <= -25 OR PER <= 0 OR PER exceeding limit (JP 40 / CN 48 / US 60)
             * **WATCH**: All other situations (default)
             """)
             
@@ -819,8 +1042,114 @@ def render_portfolios_vault_ui():
     # PDF / HTML Review Export
     st.markdown("---")
     st.subheader(t("dl_report_btn"))
-    if st.button("Generate Review Report (PDF/HTML)" if not is_jp else "診断レポートを生成"):
-        st.success("Report generation started! In a production environment, this will download a detailed report." if not is_jp else "レポート生成を開始しました。本番環境では詳細レポートのダウンロードが開始されます。")
+    
+    def build_report_data():
+        tot_val = eval_results["total_value"]
+        tot_cost = eval_results["total_cost"]
+        gain = eval_results["total_gain_loss"]
+        gain_pct = eval_results["total_gain_loss_percent"]
+        macro_s = eval_results["portfolio_macro_score"]
+        
+        score_status = ("Tailwind 🟢" if macro_s >= 10.0 else "Headwind 🔴" if macro_s <= -10.0 else "Neutral 🟡") if not is_jp else ("追い風 🟢" if macro_s >= 10.0 else "逆風 🔴" if macro_s <= -10.0 else "中立 🟡")
+        score_color = "#10b981" if macro_s >= 10.0 else "#ef4444" if macro_s <= -10.0 else "#f59e0b"
+        
+        rows_html = ""
+        for h in eval_results["holdings"]:
+            rating = h["decision"]
+            badge_bg = "#dcfce7" if rating == "BUY" else "#fee2e2" if rating == "AVOID" else "#fef9c3"
+            badge_fg = "#15803d" if rating == "BUY" else "#b91c1c" if rating == "AVOID" else "#a16207"
+            
+            rows_html += f"""
+            <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;"><span style="display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; background-color: {badge_bg}; color: {badge_fg};">{rating}</span></td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: bold;">{h['ticker']}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">{h.get('company_name', h.get('name', 'N/A'))}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">{h['qty']}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">${h['cost']:,.2f}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right;">${h['price']:,.2f}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold; color: {score_color};">{h.get('macro_score', 0.0):+.1f}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: bold;">{h.get('valuation_score', 0.0):+.1f}</td>
+            </tr>
+            """
+            
+        html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Portfolio Macro Diagnosis Report</title>
+    <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #334155; background-color: #f8fafc; padding: 40px; line-height: 1.6; }}
+        .container {{ max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 40px; }}
+        h1 {{ font-size: 24px; font-weight: 700; color: #0f172a; margin-top: 0; }}
+        .header-meta {{ font-size: 14px; color: #64748b; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 15px; }}
+        .metric-grid {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px; }}
+        .metric-card {{ background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; text-align: center; }}
+        .metric-lbl {{ font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 5px; }}
+        .metric-val {{ font-size: 18px; font-weight: 700; }}
+        table {{ width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }}
+        th {{ background: #f1f5f9; padding: 10px; text-align: left; font-weight: bold; color: #475569; }}
+        td {{ padding: 10px; border-bottom: 1px solid #e2e8f0; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{"Portfolio Macro Evaluation Report" if not is_jp else "ポートフォリオ・マクロ環境診断レポート"}</h1>
+        <div class="header-meta">
+            {"Portfolio Name:" if not is_jp else "ポートフォリオ名:"} <strong>{selected_portfolio['name']}</strong> | 
+            {"Date:" if not is_jp else "診断日時:"} {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        </div>
+        
+        <div class="metric-grid">
+            <div class="metric-card">
+                <div class="metric-lbl">{"Asset Value" if not is_jp else "総資産評価額"}</div>
+                <div class="metric-val">${tot_val:,.2f}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-lbl">{"Total Cost" if not is_jp else "投資原資"}</div>
+                <div class="metric-val">${tot_cost:,.2f}</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-lbl">{"Profit / Loss" if not is_jp else "評価損益"}</div>
+                <div class="metric-val" style="color: {'#10b981' if gain >= 0 else '#ef4444'}">${gain:+,.2f} ({gain_pct:+.2f}%)</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-lbl">{"Macro Score" if not is_jp else "マクロ適合スコア"}</div>
+                <div class="metric-val" style="color: {score_color};">{macro_s:+.2f} ({score_status})</div>
+            </div>
+        </div>
+        
+        <h3>{"Holdings Analysis" if not is_jp else "保有銘柄の内訳"}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Rating</th>
+                    <th>Ticker</th>
+                    <th>Name</th>
+                    <th style="text-align: right;">Qty</th>
+                    <th style="text-align: right;">Cost</th>
+                    <th style="text-align: right;">Price</th>
+                    <th style="text-align: right;">Macro</th>
+                    <th style="text-align: right;">Val</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_html}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+"""
+        return html
+
+    report_content = build_report_data()
+    st.download_button(
+        label="📥 Download Review Report (HTML)" if not is_jp else "📥 診断レポートをダウンロード (HTML)",
+        data=report_content,
+        file_name=f"macro_report_{selected_portfolio['name'].replace(' ', '_')}.html",
+        mime="text/html",
+        use_container_width=True
+    )
 
 
 def render_macro_timeline_ui():
@@ -983,6 +1312,28 @@ def render_alert_settings_ui():
             st.info("⚠️ **Active Monitoring must be enabled in the sidebar** to configure automated background notifications.")
         
     email_on = st.checkbox("Email Notifications Enabled" if not is_jp else "メール通知を有効化", value=(settings["email_enabled"] == 1), disabled=(current_plan != "Pro"))
+    
+    # SMTP Settings (Visible when email notifications are enabled)
+    if email_on:
+        st.markdown("##### 📧 SMTP Config" if not is_jp else "##### 📧 SMTP 送信設定")
+        col_smtp1, col_smtp2 = st.columns(2)
+        with col_smtp1:
+            smtp_host = st.text_input("SMTP Host", value=settings.get("smtp_host", ""), disabled=(current_plan != "Pro"))
+            smtp_user = st.text_input("SMTP Username", value=settings.get("smtp_username", ""), disabled=(current_plan != "Pro"))
+            smtp_from = st.text_input("Sender Address (From)", value=settings.get("smtp_from", ""), disabled=(current_plan != "Pro"), placeholder="noreply@macro-stock-engine.com")
+        with col_smtp2:
+            smtp_port = st.number_input("SMTP Port", value=int(settings.get("smtp_port", 587) or 587), step=1, disabled=(current_plan != "Pro"))
+            smtp_pass = st.text_input("SMTP Password", value=settings.get("smtp_password", ""), type="password", disabled=(current_plan != "Pro"))
+    else:
+        smtp_host, smtp_port, smtp_user, smtp_pass, smtp_from = "", 587, "", "", ""
+
+    # Slack Settings
+    slack_on = st.checkbox("Slack Notifications Enabled" if not is_jp else "Slack通知を有効化", value=(settings.get("slack_enabled", 0) == 1), disabled=(current_plan != "Pro"))
+    if slack_on:
+        slack_url = st.text_input("Slack Webhook URL", value=settings.get("slack_webhook_url", ""), disabled=(current_plan != "Pro"), placeholder="https://hooks.slack.com/services/...")
+    else:
+        slack_url = ""
+
     telegram_on = st.checkbox("Telegram Notifications Enabled" if not is_jp else "Telegram通知を有効化", value=(settings.get("telegram_enabled", 0) == 1), disabled=(current_plan != "Pro"))
     
     col1, col2 = st.columns(2)
@@ -1032,14 +1383,19 @@ def render_alert_settings_ui():
         save_notification_settings(
             user_id=user_id,
             email_enabled=1 if email_on else 0,
-            slack_enabled=0,
-            slack_webhook_url="",
+            slack_enabled=1 if slack_on else 0,
+            slack_webhook_url=slack_url,
             min_severity=min_sev,
             event_types=",".join(selected_event_types),
             frequency="instant",
             telegram_enabled=1 if telegram_on else 0,
             telegram_bot_token=telegram_token,
-            telegram_chat_id=telegram_chat
+            telegram_chat_id=telegram_chat,
+            smtp_host=smtp_host,
+            smtp_port=smtp_port,
+            smtp_username=smtp_user,
+            smtp_password=smtp_pass,
+            smtp_from=smtp_from
         )
         st.success("Alert settings saved!" if not is_jp else "通知設定が正常に保存されました！")
 
@@ -1193,54 +1549,39 @@ if new_lang != st.session_state.language:
     st.rerun()
 
 # Navigation Page Selector
-page_selection = st.sidebar.radio(
-    "🧭 Navigation" if st.session_state.language == "en" else "🧭 ナビゲーション",
-    [
-        t("screener_tab"),
-        t("portfolios_tab"),
-        t("timeline_tab"),
-        t("alerts_tab"),
-        t("verification_tab"),
-        t("contact_tab"),
-        t("readme_tab")
-    ],
-    key="nav_page"
-)
+if st.session_state.active_tab == "screener":
+    page_selection = st.sidebar.radio(
+        "🧭 Navigation" if st.session_state.language == "en" else "🧭 ナビゲーション",
+        [
+            t("screener_tab"),
+            t("portfolios_tab"),
+            t("timeline_tab"),
+            t("alerts_tab"),
+            t("verification_tab")
+        ],
+        key="nav_page"
+    )
+else:
+    page_selection = ""
 
-# Sync sidebar changes back to URL query params
-reverse_route_map = {
-    t("screener_tab"): "screener",
-    t("portfolios_tab"): "vault",
-    t("timeline_tab"): "timeline",
-    t("alerts_tab"): "alerts",
-    t("verification_tab"): "verification",
-    t("contact_tab"): "contact",
-    t("readme_tab"): "readme"
-}
-if page_selection in reverse_route_map:
-    st.query_params["page"] = reverse_route_map[page_selection]
+# Sync active_tab and page selection back to URL query params
+if st.session_state.active_tab == "docs":
+    st.query_params["page"] = "docs"
+elif st.session_state.active_tab == "contact":
+    st.query_params["page"] = "contact"
+else:
+    reverse_route_map = {
+        t("screener_tab"): "screener",
+        t("portfolios_tab"): "vault",
+        t("timeline_tab"): "timeline",
+        t("alerts_tab"): "alerts",
+        t("verification_tab"): "verification",
+    }
+    if page_selection in reverse_route_map:
+        st.query_params["page"] = reverse_route_map[page_selection]
 
-if page_selection == t("portfolios_tab"):
-    render_portfolios_vault_ui()
-    st.stop()
-
-if page_selection == t("timeline_tab"):
-    render_macro_timeline_ui()
-    st.stop()
-
-if page_selection == t("alerts_tab"):
-    render_alert_settings_ui()
-    st.stop()
-
-if page_selection == t("verification_tab"):
-    render_verification_board_ui()
-    st.stop()
-
-if page_selection == t("contact_tab"):
-    render_contact_form_ui()
-    st.stop()
-
-if page_selection == t("readme_tab"):
+# Handle routing based on active_tab or page_selection
+if st.session_state.active_tab == "docs":
     # Inject CSS to hide sidebar completely and center the content
     st.markdown("""
         <style>
@@ -1254,7 +1595,7 @@ if page_selection == t("readme_tab"):
                 padding-left: 0rem !important;
             }
             .main .block-container {
-                max-width: 800px !important;
+                max-width: 900px !important;
                 margin: 0 auto !important;
                 padding-top: 2rem !important;
                 padding-bottom: 2rem !important;
@@ -1262,13 +1603,48 @@ if page_selection == t("readme_tab"):
         </style>
     """, unsafe_allow_html=True)
     
-    back_label = "◀ Back to Screener Hub" if st.session_state.language == "en" else "◀ スクリーナーに戻る"
-    if st.button(back_label, use_container_width=True):
-        st.session_state.nav_page = t("screener_tab")
-        st.rerun()
-        
     render_readme_ui()
     st.stop()
+
+if st.session_state.active_tab == "contact":
+    # Inject CSS to hide sidebar completely and center the content
+    st.markdown("""
+        <style>
+            [data-testid="stSidebar"] {
+                display: none !important;
+            }
+            [data-testid="stSidebarCollapsedControl"] {
+                display: none !important;
+            }
+            [data-testid="stAppViewContainer"] {
+                padding-left: 0rem !important;
+            }
+            .main .block-container {
+                max-width: 900px !important;
+                margin: 0 auto !important;
+                padding-top: 2rem !important;
+                padding-bottom: 2rem !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    render_contact_form_ui()
+    st.stop()
+
+# Screener Sub-pages Routing (only if active_tab is "screener")
+if st.session_state.active_tab == "screener":
+    if page_selection == t("portfolios_tab"):
+        render_portfolios_vault_ui()
+        st.stop()
+    elif page_selection == t("timeline_tab"):
+        render_macro_timeline_ui()
+        st.stop()
+    elif page_selection == t("alerts_tab"):
+        render_alert_settings_ui()
+        st.stop()
+    elif page_selection == t("verification_tab"):
+        render_verification_board_ui()
+        st.stop()
 
 # API Keys
 fred_api_key_input = st.sidebar.text_input(

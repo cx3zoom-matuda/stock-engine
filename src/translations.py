@@ -137,7 +137,9 @@ TRANSLATIONS = {
         "contact_error": "Failed to send message: {}",
         "contact_first_time_notice": "⚠️ **First-time Setup Note**: We use FormSubmit.co for routing inquiries. The very first time you submit this form, FormSubmit will send an activation email to **macro@z0a.net**. You must click the activation link in that email to start receiving form submissions.",
         "contact_history_title": "📜 Sent Inquiries Log (Local Database)",
-        "contact_no_history": "No inquiries submitted yet from this database."
+        "contact_no_history": "No inquiries submitted yet from this database.",
+        "return_link": "👈 Back to G20 Macro Portal",
+        "return_desc": "This app is the analytical engine. For the documentation, user manual, and contact form, visit the G20 Macro Portal at:"
     },
     "jp": {
         "page_title": "G20マクロ＆株式評価ハブ",
@@ -228,7 +230,7 @@ TRANSLATIONS = {
         "no_positions_real": "保有ポジションはありません。ポートフォリオCSVファイルをアップロードしてください。",
         "no_positions_paper": "ポジションはありません。上記の取引フォームから株式を購入してください。",
         "risk_title": "🚨 マクロ逆風リスクの検出",
-        "risk_detected": "マクロ経済 of 逆風に直面している保有銘柄が {count} 件検出されました：",
+        "risk_detected": "マクロ経済の逆風に直面している保有銘柄が {count} 件検出されました：",
         "no_risk": "この口座にはマクロ経済の逆風に直面しているポジションはありません。",
         "empty_account": "口座は空です。",
         "tx_history": "📜 取引履歴",
@@ -275,7 +277,9 @@ TRANSLATIONS = {
         "contact_error": "送信に失敗しました: {}",
         "contact_first_time_notice": "⚠️ **初回セットアップ時の注意**: 問い合わせの転送に FormSubmit.co を使用しています。初めて送信した際、**macro@z0a.net** に確認メールが届きます。そのメール内の有効化リンクをクリックすることで、以降の問い合わせがメールボックスに正しく届くようになります。",
         "contact_history_title": "📜 送信済み問い合わせ履歴 (ローカルデータベース)",
-        "contact_no_history": "このデータベースから送信された問い合わせ履歴はありません。"
+        "contact_no_history": "このデータベースから送信された問い合わせ履歴はありません。",
+        "return_link": "👈 G20マクロ・ポータルに戻る",
+        "return_desc": "本アプリはマクロ判定・スクリーニングを実行するエンジン本体です。仕様解説、操作マニュアル、およびお問い合わせはマクロ・ポータルをご覧ください："
     }
 }
 

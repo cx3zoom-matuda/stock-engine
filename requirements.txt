@@ -8,5 +8,6 @@ plotly>=5.18.0
 yfinance>=0.2.30
 aiohttp>=3.8.0
 pytest-asyncio>=0.21.0
+tomli>=2.0.0
 
 

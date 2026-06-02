@@ -129,7 +129,7 @@ def init_db(db_path: str = DB_PATH):
             )
         """)
 
-        # Dynamically add Telegram columns if table exists but lacks them
+        # Dynamically add Telegram & SMTP columns if table exists but lacks them
         try:
             cursor.execute("PRAGMA table_info(notification_settings)")
             columns = [row["name"] for row in cursor.fetchall()]
@@ -139,6 +139,16 @@ def init_db(db_path: str = DB_PATH):
                 cursor.execute("ALTER TABLE notification_settings ADD COLUMN telegram_bot_token TEXT")
             if "telegram_chat_id" not in columns:
                 cursor.execute("ALTER TABLE notification_settings ADD COLUMN telegram_chat_id TEXT")
+            if "smtp_host" not in columns:
+                cursor.execute("ALTER TABLE notification_settings ADD COLUMN smtp_host TEXT")
+            if "smtp_port" not in columns:
+                cursor.execute("ALTER TABLE notification_settings ADD COLUMN smtp_port INTEGER DEFAULT 587")
+            if "smtp_username" not in columns:
+                cursor.execute("ALTER TABLE notification_settings ADD COLUMN smtp_username TEXT")
+            if "smtp_password" not in columns:
+                cursor.execute("ALTER TABLE notification_settings ADD COLUMN smtp_password TEXT")
+            if "smtp_from" not in columns:
+                cursor.execute("ALTER TABLE notification_settings ADD COLUMN smtp_from TEXT")
         except Exception as col_err:
             logger.warning(f"Failed to check/alter notification_settings schema: {col_err}")
 
@@ -419,18 +429,24 @@ def save_notification_settings(
     telegram_enabled: int = 0,
     telegram_bot_token: str = "",
     telegram_chat_id: str = "",
+    smtp_host: str = "",
+    smtp_port: int = 587,
+    smtp_username: str = "",
+    smtp_password: str = "",
+    smtp_from: str = "",
     db_path: str = DB_PATH
 ):
-    """Updates user notification settings including Slack and Telegram."""
+    """Updates user notification settings including Slack, Telegram, and SMTP."""
     conn = get_connection(db_path)
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO notification_settings (
             user_id, email_enabled, slack_enabled, slack_webhook_url,
             telegram_enabled, telegram_bot_token, telegram_chat_id,
+            smtp_host, smtp_port, smtp_username, smtp_password, smtp_from,
             min_severity, event_types, frequency
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             email_enabled = excluded.email_enabled,
             slack_enabled = excluded.slack_enabled,
@@ -438,12 +454,18 @@ def save_notification_settings(
             telegram_enabled = excluded.telegram_enabled,
             telegram_bot_token = excluded.telegram_bot_token,
             telegram_chat_id = excluded.telegram_chat_id,
+            smtp_host = excluded.smtp_host,
+            smtp_port = excluded.smtp_port,
+            smtp_username = excluded.smtp_username,
+            smtp_password = excluded.smtp_password,
+            smtp_from = excluded.smtp_from,
             min_severity = excluded.min_severity,
             event_types = excluded.event_types,
             frequency = excluded.frequency
     """, (
         user_id, email_enabled, slack_enabled, slack_webhook_url,
         telegram_enabled, telegram_bot_token, telegram_chat_id,
+        smtp_host, smtp_port, smtp_username, smtp_password, smtp_from,
         min_severity, event_types, frequency
     ))
     conn.commit()

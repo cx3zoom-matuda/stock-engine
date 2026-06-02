@@ -108,7 +108,7 @@ st.markdown('<div class="subtitle-text">Seven AI-Native Tools. One Unified Visio
 st.markdown("""
 <div class="link-banner">
     🚀 <strong>本システムのオフィシャルカスタムドメイン:</strong> 
-    <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> から安全にアクセスいただけます。
+    <a href="https://macro.ezora.net" target="_blank">macro.ezora.net</a> から安全にアクセスいただけます。
 </div>
 """, unsafe_allow_html=True)
 

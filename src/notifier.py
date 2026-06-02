@@ -1,3 +1,4 @@
+import html
 import smtplib
 import urllib.request
 import json
@@ -194,7 +195,8 @@ def build_portfolio_evaluation_email_html(
     macro_event: Dict[str, Any],
     eval_summary: Dict[str, Any],
     holdings_evals: List[Dict[str, Any]],
-    app_url: str = "https://stock.z0a.net",
+    user_email: str = "user@example.com",
+    app_url: str = "https://macro.ezora.net",
     language: str = "en"
 ) -> str:
     """
@@ -208,6 +210,7 @@ def build_portfolio_evaluation_email_html(
     score = eval_summary.get("portfolio_macro_score", 0.0)
     score_color = "#10b981" if score >= 10.0 else "#ef4444" if score <= -10.0 else "#f59e0b"
     
+    safe_email = html.escape(user_email)
     is_jp = (language == "jp")
     if is_jp:
         score_status = "追い風 🟢" if score >= 10.0 else "逆風 🔴" if score <= -10.0 else "中立 🟡"
@@ -216,7 +219,7 @@ def build_portfolio_evaluation_email_html(
         ご登録のポートフォリオ「<strong>{portfolio_name}</strong>」への影響を自動再評価いたしました。
         """
         btn_lbl = "Open Dashboard (ダッシュボードを開く)"
-        user_lbl = f"ログインユーザー名: demo@example.com (Proプラン)"
+        user_lbl = f"ログインユーザー名: {safe_email} (Proプラン)"
         footer_html = """
         本メールはマクロ経済評価エンジンによって自動送信されました。<br/>
         配信設定の変更は、ダッシュボードの「Alert Settings」画面から行うことができます。<br/>
@@ -228,7 +231,7 @@ def build_portfolio_evaluation_email_html(
         We have automatically re-evaluated the impact on your registered portfolio "<strong>{portfolio_name}</strong>".
         """
         btn_lbl = "Open Dashboard"
-        user_lbl = f"Logged in as: demo@example.com (Pro Plan)"
+        user_lbl = f"Logged in as: {safe_email} (Pro Plan)"
         footer_html = """
         This email was automatically sent by the Macro Evaluation Engine.<br/>
         You can change your delivery settings in the Alert Settings screen of your dashboard.<br/>
@@ -342,7 +345,7 @@ def build_slack_alert_payload(
     macro_event: Dict[str, Any],
     eval_summary: Dict[str, Any],
     holdings_evals: List[Dict[str, Any]],
-    app_url: str = "https://stock.z0a.net"
+    app_url: str = "https://macro.ezora.net"
 ) -> Dict[str, Any]:
     """
     Builds a structured Slack payload for webhook dispatch.
@@ -411,7 +414,7 @@ def build_slack_alert_payload(
                         "type": "section",
                         "text": {
                             "type": "mrkdwn",
-                            "text": f"📍 *Open dashboard:*\n<{app_url}|stock.z0a.net>"
+                            "text": f"📍 *Open dashboard:*\n<{app_url}|macro.ezora.net>"
                         }
                     }
                 ]

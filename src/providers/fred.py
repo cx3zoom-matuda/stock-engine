@@ -14,6 +14,13 @@ from src.providers.base import BaseMacroProvider
 
 logger = logging.getLogger(__name__)
 
+CPI_SERIES = frozenset({
+    "CPALTT01JPM657N",  # Japan CPI (index)
+    "CPIAUCSL",         # US CPI (index)
+    "CPALTT01EZM657N",  # Euro Area CPI (index)
+    "CPI_YOY",          # Generic alias
+})
+
 class FredProvider(BaseMacroProvider):
     """
     Asynchronous client wrapper for the Federal Reserve Economic Data (FRED) API.
@@ -150,9 +157,23 @@ class FredProvider(BaseMacroProvider):
         except Exception as e:
             logger.warning(f"Error writing cache for {series_id}: {e}")
 
+    def _compute_yoy_from_index(self, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Converts monthly index-level observations to YoY % change (12-month lag)."""
+        result = []
+        for i in range(12, len(observations)):
+            try:
+                current = float(observations[i]["value"])
+                prev_year = float(observations[i - 12]["value"])
+                if prev_year != 0:
+                    yoy = (current / prev_year - 1) * 100
+                    result.append({"date": observations[i]["date"], "value": f"{yoy:.4f}"})
+            except (ValueError, ZeroDivisionError):
+                continue
+        return result
+
     async def fetch_series_observations(
-        self, 
-        series_id: str, 
+        self,
+        series_id: str,
         observation_start: Optional[str] = None,
         observation_end: Optional[str] = None,
         units: str = "lin"
@@ -160,10 +181,15 @@ class FredProvider(BaseMacroProvider):
         """
         Fetches observations for a given FRED series.
         If no API key is specified, falls back to generating mock data.
+        CPI series automatically use units='pc1' (YoY %) via the FRED API.
         """
+        # Auto-use YoY percentage units for CPI/inflation series
+        if series_id in CPI_SERIES and units == "lin":
+            units = "pc1"
+
         start = observation_start or (datetime.now() - timedelta(days=500)).strftime("%Y-%m-%d")
         end = observation_end or datetime.now().strftime("%Y-%m-%d")
-        
+
         if self.enable_cache:
             cached_data = self._read_from_cache(series_id, start, end)
             if cached_data is not None:
@@ -172,6 +198,8 @@ class FredProvider(BaseMacroProvider):
         if not self.api_key:
             logger.warning(f"No FRED API key provided. Generating mock data for {series_id}.")
             mock_data = self._generate_mock_data(series_id, start, end)
+            if series_id in CPI_SERIES:
+                mock_data = self._compute_yoy_from_index(mock_data)
             if self.enable_cache:
                 self._write_to_cache(series_id, mock_data)
             return mock_data

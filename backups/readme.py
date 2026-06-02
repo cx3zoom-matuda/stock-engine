@@ -31,7 +31,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Link back to the main app
-st.markdown("### [◀ Back to Screener Hub / メインアプリに戻る](https://macro-stock-engine.streamlit.app/)")
+st.markdown("### [◀ Back to Screener Hub / メインアプリに戻る](https://macro.ezora.net/)")
 st.markdown("---")
 
 # Styling overrides
@@ -87,7 +87,7 @@ st.markdown('<div class="subtitle-text">Technical Specifications, User Manual & 
 st.markdown("""
 <div class="link-banner">
     🚀 <strong>本システムのオフィシャルカスタムドメイン:</strong> 
-    <a href="https://stock.z0a.net" target="_blank">stock.z0a.net</a> から安全にアクセスいただけます。
+    <a href="https://macro.ezora.net" target="_blank">macro.ezora.net</a> から安全にアクセスいただけます。
 </div>
 """, unsafe_allow_html=True)
 

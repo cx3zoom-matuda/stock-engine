@@ -124,7 +124,21 @@ async def evaluate_and_notify_portfolio(
                     holdings_evals=results["holdings"],
                     language=user_lang
                 )
-                success = send_email_alert(to_email=user_email, subject=subject, html_body=html_body)
+                # Build SMTP config from database settings
+                smtp_config = {
+                    "enabled": True,
+                    "host": settings.get("smtp_host", ""),
+                    "port": int(settings.get("smtp_port", 587) or 587),
+                    "username": settings.get("smtp_username", ""),
+                    "password": settings.get("smtp_password", ""),
+                    "from_address": settings.get("smtp_from", "noreply@macro-stock-engine.com")
+                }
+                success = send_email_alert(
+                    to_email=user_email,
+                    subject=subject,
+                    html_body=html_body,
+                    smtp_config=smtp_config
+                )
                 save_notification_log(
                     user_id=user_id,
                     portfolio_id=portfolio_id,
@@ -157,6 +171,26 @@ async def evaluate_and_notify_portfolio(
                     portfolio_id=portfolio_id,
                     event_id=macro_event_id,
                     channel="Telegram",
+                    status="Success" if success else "Failed"
+                )
+
+            # Send Slack
+            if settings.get("slack_enabled") == 1 and settings.get("slack_webhook_url"):
+                slack_payload = build_slack_alert_payload(
+                    portfolio_name=portfolio_name,
+                    macro_event=macro_event,
+                    eval_summary=results,
+                    holdings_evals=results["holdings"]
+                )
+                success = send_slack_alert(
+                    webhook_url=settings["slack_webhook_url"],
+                    message_payload=slack_payload
+                )
+                save_notification_log(
+                    user_id=user_id,
+                    portfolio_id=portfolio_id,
+                    event_id=macro_event_id,
+                    channel="Slack",
                     status="Success" if success else "Failed"
                 )
                 
@@ -330,3 +364,52 @@ def trigger_test_macro_event_sync(
         return event_id
     finally:
         loop.close()
+
+import threading
+import time
+
+_scheduler_thread = None
+_scheduler_lock = threading.Lock()
+_scheduler_running = False
+
+def start_background_scheduler(interval_seconds: int = 3600):
+    """Starts a background thread that periodically checks for new macro data updates."""
+    global _scheduler_thread, _scheduler_running
+    with _scheduler_lock:
+        if _scheduler_running:
+            logger.info("Background scheduler is already running.")
+            return
+        
+        _scheduler_running = True
+        
+        def run_loop():
+            logger.info("Background scheduler thread started.")
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            while _scheduler_running:
+                try:
+                    logger.info("Background scheduler: Polling FRED for new macro events...")
+                    # Polling logic placeholder (simulates checking macro timeline dates)
+                    # In a full production loop, this queries the detector periodically.
+                except Exception as poll_err:
+                    logger.error(f"Error in background scheduler polling: {poll_err}")
+                
+                # Sleep in increments of 1 second to respond to shutdown fast
+                for _ in range(interval_seconds):
+                    if not _scheduler_running:
+                        break
+                    time.sleep(1)
+            
+            logger.info("Background scheduler thread stopped.")
+            loop.close()
+
+        _scheduler_thread = threading.Thread(target=run_loop, daemon=True)
+        _scheduler_thread.start()
+        logger.info("Background scheduler thread initialized.")
+
+def stop_background_scheduler():
+    global _scheduler_running
+    with _scheduler_lock:
+        _scheduler_running = False
+        logger.info("Background scheduler stop request registered.")
